@@ -1,0 +1,200 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* Body */
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background: #0f172a;
+  color: #ffffff;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 220px;
+  background: #020617;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  padding-top: 2rem;
+}
+
+.sidebar-logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar li {
+  padding: 1rem;
+  margin: 0.5rem 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.sidebar li:hover,
+.sidebar li.active {
+  background: linear-gradient(90deg, #6b5bff, #8b65ff);
+  box-shadow: 0 0 10px #8b65ff;
+}
+
+/* Main content */
+.main-content {
+  margin-left: 240px;
+  padding: 2rem;
+  width: calc(100% - 240px);
+  box-sizing: border-box;
+}
+
+.tab-content {
+  display: none;
+  width: 100%;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* Animations */
+@keyframes slide-in {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.25s ease-out;
+}
+
+/* Stats Cards */
+.stats-cards {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin: 2rem 0;
+  flex-wrap: nowrap;
+  width: 100% !important;
+}
+
+.card {
+  @apply flex-none p-6 rounded-xl text-center shadow-md transition-transform duration-300 bg-gradient-to-br from-purple-500 to-indigo-500;
+  min-width: 250px; 
+}
+
+.card:hover {
+  transform: translateY(-5px);
+}
+
+.card-icon {
+  font-size: 1.5rem; 
+  margin-bottom: 0.5rem;
+}
+
+.card-title {
+  font-weight: bold;
+  margin: 0.5rem 0;
+  font-size: 1.2rem; 
+  white-space: nowrap; 
+}
+
+.card-value {
+  font-weight: 300;
+  font-size: 1.5rem; 
+  margin: 0;
+}
+
+/* Buttons */
+.btn-glow {
+  display: block;
+  margin: 10px auto 0;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #6b5bff, #8b65ff);
+  color: #fff;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+.btn-glow:hover {
+  box-shadow: 0 0 10px #8b65ff, 0 0 20px #6b5bff;
+  transform: translateY(-3px);
+}
+
+/* Tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #020617;
+}
+
+th, td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #1a1f3d;
+}
+
+th {
+  color: #ffffff;
+  font-weight: bold;
+}
+
+tr:hover {
+  background: rgba(107, 91, 255, 0.2);
+}
+
+/* Edit/Delete buttons */
+.btn-edit, .btn-delete {
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-right: 0.25rem;
+}
+
+.btn-edit {
+  background: linear-gradient(90deg, #00c6ff, #0072ff);
+  color: #fff;
+}
+
+.btn-delete {
+  background: linear-gradient(90deg, #ff4e50, #f9d423);
+  color: #fff;
+}
+
+.btn-edit:hover {
+  box-shadow: 0 0 8px #0072ff;
+}
+
+.btn-delete:hover {
+  box-shadow: 0 0 8px #f9d423;
+}
+
+/* Responsive */
+@media (max-width: 800px) {
+  .stats-cards {
+    flex-wrap: wrap;
+  }
+}
