@@ -36,10 +36,10 @@ const TopBar: React.FC<TopBarProps> = ({ files, onNewAlert, onLogout }) => {
   const handleCreateAlert = async (alertData: any) => {
     if (!externalUserId) return;
     try {
-      const res = await apiPost(`/ttscanner/custom-alert/create/${externalUserId}/`, alertData);
+      const res = await apiPost<{alert: number}>(`/ttscanner/custom-alert/create/${externalUserId}/`, alertData);
       const file = files?.find(f => f.id === alertData.file_association);
       const newAlert: UserAlert = {
-        id: res.alert, 
+        id: res.alert,
         file_association_id: alertData.file_association,
         file_name: file ? `${file.algo}${file.group}${file.interval}` : "Unknown",
         symbol_interval: alertData.symbol_interval,
@@ -53,7 +53,8 @@ const TopBar: React.FC<TopBarProps> = ({ files, onNewAlert, onLogout }) => {
       setShowAlertBar(false);
     } catch (err: any) {
       console.error("Error saving alert:", err);
-      return err.data || { general: ["Something went wrong"] };
+      const errorData = err.response?.data || {};
+      return errorData || { general: ["Something went wrong"] };
     }
   };
 
@@ -114,9 +115,8 @@ const TopBar: React.FC<TopBarProps> = ({ files, onNewAlert, onLogout }) => {
       {showAlertBar && (
         <AlertConfigurationBar
           isOpen={true}
-          files={files || []}
           onClose={() => setShowAlertBar(false)}
-          onSave={handleCreateAlert} 
+          onSave={handleCreateAlert}
         />
       )}
     </>

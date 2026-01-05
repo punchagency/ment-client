@@ -7,8 +7,12 @@ export const fetchUserSettings = async (userId: number) =>{
     return res.data;
 }
 
-export const updateUserSettings = async (userId: number, settingsData: string) =>{
-   const res = await axios.patch(`${BASE_URL}/settings/update/${userId}/`, settingsData);
+export const updateUserSettings = async (userId: number, settingsData: object) =>{
+   const res = await axios.patch(
+     `${BASE_URL}/settings/update/${userId}/`,
+     settingsData,
+     { headers: { 'Content-Type': 'application/json' } }
+   );
     return res.data;
 }
 

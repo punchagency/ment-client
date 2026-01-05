@@ -75,10 +75,7 @@ const SettingsPage: React.FC = () => {
     }
 
     try {
-      await updateUserSettings(Number(externalUserId), {
-        ...settings,
-        theme,
-      });
+      await updateUserSettings(Number(externalUserId), settings);
       setToast({ text: "Settings saved successfully", type: "success" });
     } catch {
       setToast({ text: "Failed to save settings", type: "error" });

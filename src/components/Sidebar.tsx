@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 interface SidebarProps {
-  onLogout: () => void; // new prop for logout
+  onLogout: () => void; 
 }
 
 const tabs = [

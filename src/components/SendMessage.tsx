@@ -28,7 +28,7 @@ export default function SendMessage() {
   // Fetch logs
   const fetchLogs = async () => {
     try {
-      const data = await apiGet("/ttscanner/announcement/log/");
+      const data = await apiGet<Announcement[]>("/ttscanner/announcement/log/");
       setLogs(data);
     } catch (err) {
       console.error("Error fetching announcement logs:", err);
@@ -47,13 +47,14 @@ export default function SendMessage() {
     try {
       setLoading(true);
       setStatus(`📨 Sending ${type}...`);
-      const data = await apiPost("/ttscanner/announcement/send/", { message, type });
-      setStatus(`✅ ${data.message || `${type} sent successfully!`}`);
+      const data = await apiPost<{message?: string}>("/ttscanner/announcement/send/", { message, type });
+      setStatus(`✅ ${data?.message || `${type} sent successfully!`}`);
       setMessage("");
       fetchLogs();
     } catch (err: any) {
       console.error("SendMessage error:", err);
-      setStatus(`❌ Error: ${err.data?.detail || err.data?.non_field_errors?.[0] || "Something went wrong"}`);
+      const errorData = err.response?.data || {};
+      setStatus(`❌ Error: ${errorData.detail || errorData.non_field_errors?.[0] || "Something went wrong"}`);
     } finally {
       setLoading(false);
     }
