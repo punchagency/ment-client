@@ -43,9 +43,9 @@ function App() {
   }
 
   const ProtectedRoutes = () => {
-    if (role === "admin") return <AdminRoutes onLogout={handleLogout} />;
+    if (role === "admin") return <AdminRoutes />;
     if (role === "regular") return <UserRoutes onLogout={handleLogout} />;
-    return <Navigate to="/" />; 
+    return <Navigate to="/" />;
   };
 
   return (

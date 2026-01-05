@@ -6,7 +6,7 @@ export const fetchFavoriteRows = async (external_user_id: string) => {
   return res.data;
 };
 
-export const deleteFavorite = async (favoriteId: number) => {
+export const deleteFavorite = async (favoriteId: string) => {
   await axios.delete(`${import.meta.env.VITE_API_URL}/ttscanner/fav-row/delete/${favoriteId}/`);
 };
 
