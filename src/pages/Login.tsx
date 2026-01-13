@@ -3,7 +3,7 @@ import { loginUser } from "../services/auth";
 import { FaEye, FaEyeSlash } from "react-icons/fa"; 
 
 interface LoginProps {
-  onLogin: (role: string) => void; // pass role back to App
+  onLogin: (role: string) => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {

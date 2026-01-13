@@ -2,23 +2,106 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
-/* Body */
+/* Theme variables */
+:root {
+  --body-bg: #f8f9fa;
+  --text-color: #111827;
+  --sidebar-bg: #f3f4f6;
+  --header-bg: #f3f4f6;
+  --card-bg: linear-gradient(to bottom right, #f9fafb, #e5e7eb);
+  --table-bg: #ffffff;
+  --table-header-bg: #f9fafb;
+  --table-border: #e5e7eb;
+  --table-row-hover: rgba(107, 91, 255, 0.05);
+  --button-bg: linear-gradient(90deg, #6b5bff, #8b65ff);
+  --button-hover-glow: 0 0 10px #8b65ff, 0 0 20px #6b5bff;
+  --edit-button-bg: linear-gradient(90deg, #00c6ff, #0072ff);
+  --delete-button-bg: linear-gradient(90deg, #ff4e50, #f9d423);
+  --sidebar-item-bg: transparent;
+  --sidebar-item-hover-bg: linear-gradient(90deg, #6b5bff, #8b65ff);
+  --sidebar-item-hover-shadow: 0 0 10px #8b65ff;
+  /* Status colors */
+  --status-active-bg: rgba(16, 185, 129, 0.2);
+  --status-active-text: #047857;
+  --status-inactive-bg: rgba(239, 68, 68, 0.2);
+  --status-inactive-text: #b91c1c;
+  --status-triggered-bg: rgba(139, 92, 246, 0.2);
+  --status-triggered-text: #7e22ce;
+}
+
+/* Dark theme remains unchanged */
+.dark {
+  --body-bg: #020617;
+  --text-color: #ffffff;
+  --sidebar-bg: #020617;
+  --header-bg: #050510;
+  --card-bg: linear-gradient(to bottom right, #1e293b, #0f172a);
+  --table-bg: #020617;
+  --table-header-bg: #1a1f3d;
+  --table-border: #1a1f3d;
+  --table-row-hover: rgba(107, 91, 255, 0.2);
+  --button-bg: linear-gradient(90deg, #6b5bff, #8b65ff);
+  --button-hover-glow: 0 0 10px #8b65ff, 0 0 20px #6b5bff;
+  --edit-button-bg: linear-gradient(90deg, #00c6ff, #0072ff);
+  --delete-button-bg: linear-gradient(90deg, #ff4e50, #f9d423);
+  --sidebar-item-bg: transparent;
+  --sidebar-item-hover-bg: linear-gradient(90deg, #6b5bff, #8b65ff);
+  --sidebar-item-hover-shadow: 0 0 10px #8b65ff;
+  /* Status colors */
+  --status-active-bg: rgba(16, 185, 129, 0.3);
+  --status-active-text: #10b981;
+  --status-inactive-bg: rgba(239, 68, 68, 0.3);
+  --status-inactive-text: #ef4444;
+  --status-triggered-bg: rgba(139, 92, 246, 0.3);
+  --status-triggered-text: #a855f7;
+}
+
+/* Light theme explicitly defined for class toggle */
+.light {
+  --body-bg: #f8f9fa;
+  --text-color: #111827;
+  --sidebar-bg: #f3f4f6;
+  --header-bg: #f3f4f6;
+  --card-bg: linear-gradient(to bottom right, #f9fafb, #e5e7eb);
+  --table-bg: #ffffff;
+  --table-header-bg: #f9fafb;
+  --table-border: #e5e7eb;
+  --table-row-hover: rgba(107, 91, 255, 0.05);
+  --button-bg: linear-gradient(90deg, #6b5bff, #8b65ff);
+  --button-hover-glow: 0 0 10px #8b65ff, 0 0 20px #6b5bff;
+  --edit-button-bg: linear-gradient(90deg, #00c6ff, #0072ff);
+  --delete-button-bg: linear-gradient(90deg, #ff4e50, #f9d423);
+  --sidebar-item-bg: transparent;
+  --sidebar-item-hover-bg: linear-gradient(90deg, #6b5bff, #8b65ff);
+  --sidebar-item-hover-shadow: 0 0 10px #8b65ff;
+  /* Status colors */
+  --status-active-bg: rgba(16, 185, 129, 0.2);
+  --status-active-text: #047857;
+  --status-inactive-bg: rgba(239, 68, 68, 0.2);
+  --status-inactive-text: #b91c1c;
+  --status-triggered-bg: rgba(139, 92, 246, 0.2);
+  --status-triggered-text: #7e22ce;
+}
+
+/* Body and other components remain the same */
 body {
   margin: 0;
   font-family: 'Inter', sans-serif;
-  background: #0f172a;
-  color: #ffffff;
+  background: var(--body-bg);
+  color: var(--text-color);
 }
+
 
 /* Sidebar */
 .sidebar {
   width: 220px;
-  background: #020617;
+  background: var(--sidebar-bg);
   height: 100vh;
   position: fixed;
   top: 0;
   left: 0;
   padding-top: 2rem;
+  color: var(--text-color);
 }
 
 .sidebar-logo {
@@ -26,6 +109,7 @@ body {
   font-weight: bold;
   text-align: center;
   margin-bottom: 2rem;
+  color: var(--text-color);
 }
 
 .sidebar ul {
@@ -39,12 +123,15 @@ body {
   border-radius: 10px;
   cursor: pointer;
   transition: 0.3s;
+  background: var(--sidebar-item-bg);
+  color: var(--text-color);
 }
 
 .sidebar li:hover,
 .sidebar li.active {
-  background: linear-gradient(90deg, #6b5bff, #8b65ff);
-  box-shadow: 0 0 10px #8b65ff;
+  background: var(--sidebar-item-hover-bg);
+  box-shadow: var(--sidebar-item-hover-shadow);
+  color: var(--text-color);
 }
 
 /* Main content */
@@ -53,6 +140,8 @@ body {
   padding: 2rem;
   width: calc(100% - 240px);
   box-sizing: border-box;
+  background: var(--body-bg);
+  color: var(--text-color);
 }
 
 .tab-content {
@@ -94,8 +183,10 @@ body {
 }
 
 .card {
-  @apply flex-none p-6 rounded-xl text-center shadow-md transition-transform duration-300 bg-gradient-to-br from-purple-500 to-indigo-500;
-  min-width: 250px; 
+  @apply flex-none p-6 rounded-xl text-center shadow-md transition-transform duration-300;
+  background: var(--card-bg);
+  color: var(--text-color);
+  min-width: 250px;
 }
 
 .card:hover {
@@ -103,20 +194,20 @@ body {
 }
 
 .card-icon {
-  font-size: 1.5rem; 
+  font-size: 1.5rem;
   margin-bottom: 0.5rem;
 }
 
 .card-title {
   font-weight: bold;
   margin: 0.5rem 0;
-  font-size: 1.2rem; 
-  white-space: nowrap; 
+  font-size: 1.2rem;
+  white-space: nowrap;
 }
 
 .card-value {
   font-weight: 300;
-  font-size: 1.5rem; 
+  font-size: 1.5rem;
   margin: 0;
 }
 
@@ -127,15 +218,15 @@ body {
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 8px;
-  background: linear-gradient(90deg, #6b5bff, #8b65ff);
-  color: #fff;
+  background: var(--button-bg);
+  color: var(--text-color);
   cursor: pointer;
   font-weight: bold;
   transition: 0.3s;
 }
 
 .btn-glow:hover {
-  box-shadow: 0 0 10px #8b65ff, 0 0 20px #6b5bff;
+  box-shadow: var(--button-hover-glow);
   transform: translateY(-3px);
 }
 
@@ -146,22 +237,24 @@ table {
   margin-top: 1rem;
   border-radius: 12px;
   overflow: hidden;
-  background: #020617;
+  background: var(--table-bg);
+  color: var(--text-color);
 }
 
 th, td {
   padding: 0.75rem;
   text-align: left;
-  border-bottom: 1px solid #1a1f3d;
+  border-bottom: 1px solid var(--table-border);
+  color: var(--text-color);
 }
 
 th {
-  color: #ffffff;
+  background: var(--table-header-bg);
   font-weight: bold;
 }
 
 tr:hover {
-  background: rgba(107, 91, 255, 0.2);
+  background: var(--table-row-hover);
 }
 
 /* Edit/Delete buttons */
@@ -175,13 +268,13 @@ tr:hover {
 }
 
 .btn-edit {
-  background: linear-gradient(90deg, #00c6ff, #0072ff);
-  color: #fff;
+  background: var(--edit-button-bg);
+  color: var(--text-color);
 }
 
 .btn-delete {
-  background: linear-gradient(90deg, #ff4e50, #f9d423);
-  color: #fff;
+  background: var(--delete-button-bg);
+  color: var(--text-color);
 }
 
 .btn-edit:hover {
@@ -190,6 +283,11 @@ tr:hover {
 
 .btn-delete:hover {
   box-shadow: 0 0 8px #f9d423;
+}
+
+/* Headings globally */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-color);
 }
 
 /* Responsive */
