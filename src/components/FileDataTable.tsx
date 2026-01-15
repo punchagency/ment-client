@@ -239,12 +239,16 @@ const FileDataTable: React.FC<Props> = ({
   const getSortIcon = (header: string) =>
     sortConfig?.key !== header ? "⬍" : sortConfig.direction === "asc" ? "🔼" : "🔽";
 
-  const getRowClass = (index: number) =>
-    updatedRowIds.has(index)
-      ? "bg-yellow-900/20 animate-pulse"
-      : index % 2 === 0
-        ? "bg-gray-900/50"
-        : "bg-gray-900/30";
+  const getRowClass = (row: any, index: number) => {
+    const symIntKey = Object.keys(row).find(
+      (k) => k.toLowerCase().includes("sym") && k.toLowerCase().includes("int")
+    );
+    const isFavorite = symIntKey && favorites[row[symIntKey]];
+
+    if (updatedRowIds.has(index)) return "bg-yellow-900/20 animate-pulse";
+    if (!isFavorite) return "bg-gray-700/20"; 
+    return index % 2 === 0 ? "bg-gray-900/50" : "bg-gray-900/30";
+  };
 
   const isTTScanner = fileType === "TTScanner";
   const dateMap: Record<string, string> = {
@@ -332,9 +336,16 @@ const FileDataTable: React.FC<Props> = ({
 
         <tbody>
           {sortedData.map((row, idx) => (
-            <tr key={idx} className={`${getRowClass(idx)} hover:bg-gray-800/30 border-b border-gray-800`}>
+            <tr key={idx} className={`${getRowClass(row, idx)} hover:bg-gray-800/30 border-b border-gray-800`}>
               <td
-                className="py-2 px-3 text-center cursor-pointer text-yellow-400"
+                className={`py-2 px-3 text-center cursor-pointer ${
+                  (() => {
+                    const key = Object.keys(row).find(
+                      (k) => k.toLowerCase().includes("sym") && k.toLowerCase().includes("int")
+                    );
+                    return key && favorites[row[key]] ? "text-yellow-400" : "text-gray-400"; // gray for non-favorites
+                  })()
+                }`}
                 onClick={() => toggleFavorite(row)}
               >
                 {(() => {
@@ -343,7 +354,7 @@ const FileDataTable: React.FC<Props> = ({
                   );
                   return key && favorites[row[key]] ? "★" : "☆";
                 })()}
-              </td>
+            </td>
               {headers.map(h => !shouldSkipColumn(h) && (
                 <td
                   key={h}

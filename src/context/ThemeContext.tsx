@@ -13,19 +13,16 @@ const ThemeContext = createContext<ThemeContextType>({
 });
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<Theme>("light");
+  const [theme, setThemeState] = useState<Theme>("dark");
 
   // Apply theme to html
   const applyTheme = (theme: Theme) => {
     const html = document.documentElement;
-    if (theme === "dark") {
-      html.classList.add("dark");
-    } else {
-      html.classList.remove("dark");
-    }
-    localStorage.setItem("theme", theme); 
+    html.classList.remove("light", "dark");
+    html.classList.add(theme);
+    localStorage.setItem("theme", theme);
   };
-
+  
   const setTheme = (theme: Theme) => {
     setThemeState(theme);
     applyTheme(theme);

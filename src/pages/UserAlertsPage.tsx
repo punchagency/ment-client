@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { apiGet, apiPatch, apiDelete } from "../services/api";
 import UserAlertTable from "../components/UserAlertTable";
 import EditUserAlertModal from "../components/EditUserAlertModal";
@@ -43,22 +43,25 @@ const UserAlertsPage: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [alertToDelete, setAlertToDelete] = useState<UserAlert | null>(null);
 
+  const sseQueue = useRef<TriggeredAlert[]>([]);
+  const sseTimeout = useRef<any>(null);
+
   // Fetch user ID
   useEffect(() => {
     const id = getUserID();
     setExternalUserId(id ? id.toString() : null);
   }, []);
+
+  // Fetch initial alerts and files only
   useEffect(() => {
     if (!externalUserId) return;
 
     const fetchInitialData = async () => {
       try {
-        const [alertsData, filesData, triggeredData] = await Promise.all([
+        const [alertsData, filesData] = await Promise.all([
           apiGet<any[]>(`/ttscanner/custom-alert/all/${externalUserId}/`),
           apiGet<any[]>("/ttscanner/file-associations/"),
-          apiGet<any[]>(`/ttscanner/alert-logs/${externalUserId}/`)
         ]);
-        console.log(triggeredData);
 
         const normalizedFiles: FileAssociation[] = filesData.map((f) => ({
           id: f.id,
@@ -68,8 +71,11 @@ const UserAlertsPage: React.FC = () => {
         }));
         setFiles(normalizedFiles);
 
-        const alertsWithNames: UserAlert[] = alertsData.map((alert) => {
-          const file = normalizedFiles.find((f) => f.id === alert.file_association);
+        // Use Map for faster lookups
+        const fileMap = new Map(normalizedFiles.map(f => [f.id, f]));
+
+        const alertsWithNames: UserAlert[] = alertsData.map(alert => {
+          const file = fileMap.get(alert.file_association);
           return {
             id: alert.id,
             file_association_id: alert.file_association,
@@ -82,34 +88,9 @@ const UserAlertsPage: React.FC = () => {
             is_active: alert.is_active,
           };
         });
+
         setAlerts(alertsWithNames);
 
-        // Map triggered logs
-        const logsWithNames: TriggeredAlert[] = triggeredData.map((log) => {
-        const file = normalizedFiles.find((f) => f.id === log.file_association);
-
-        const fileName =
-          log.file_name ||
-          (file
-            ? `${file.algo}${file.group ?? ""}${file.interval}`
-            : "Unknown");
-
-        return {
-          id: log.id,
-          file_name: fileName,
-          message: log.message,
-          triggered_at: log.triggered_at,
-          alert_type:
-            log.alert_source === "system"
-              ? "System"
-              : log.alert_source === "global"
-              ? "Default"
-              : "User",
-        };
-      });
-
-
-        setTriggeredLogs(logsWithNames.reverse()); 
       } catch (err) {
         console.error("Initial load failed:", err);
       } finally {
@@ -120,7 +101,36 @@ const UserAlertsPage: React.FC = () => {
     fetchInitialData();
   }, [externalUserId]);
 
-  // SSE for live alerts
+  // Fetch logs only when Logs tab is clicked
+  useEffect(() => {
+    if (activeTab !== "logs" || triggeredLogs.length > 0 || !externalUserId) return;
+
+    const fetchLogs = async () => {
+      try {
+        const logsData = await apiGet<any[]>(`/ttscanner/alert-logs/${externalUserId}/`);
+        const fileMap = new Map(files.map(f => [f.id, f]));
+        const logsWithNames: TriggeredAlert[] = logsData.map(log => {
+          const file = fileMap.get(log.file_association);
+          const fileName = log.file_name || (file ? `${file.algo}${file.group ?? ""}${file.interval}` : "Unknown");
+          return {
+            id: log.id,
+            file_name: fileName,
+            message: log.message,
+            triggered_at: log.triggered_at,
+            alert_type: log.alert_source === "system" ? "System" : log.alert_source === "global" ? "Default" : "User",
+          };
+        });
+
+        setTriggeredLogs(logsWithNames.reverse());
+      } catch (err) {
+        console.error("Failed to load logs:", err);
+      }
+    };
+
+    fetchLogs();
+  }, [activeTab, externalUserId, files]);
+
+  // SSE for live alerts with debouncing
   useEffect(() => {
     if (!externalUserId) return;
 
@@ -132,27 +142,32 @@ const UserAlertsPage: React.FC = () => {
       if (data.error) return;
 
       // Update active alerts
-      setAlerts((prev) =>
-        prev.map((alert) =>
+      setAlerts(prev =>
+        prev.map(alert =>
           alert.id === data.alert_id
             ? { ...alert, last_value: data.last_value, is_active: data.is_active }
             : alert
         )
       );
 
-      // Update triggered logs if alert triggered
+      // Queue triggered logs updates
       if (!data.is_active) {
-        const fileName = data.file_name || alerts.find((a) => a.id === data.alert_id)?.file_name || "Unknown";
-        setTriggeredLogs((prev) => [
-          {
-            id: data.alert_id,
-            file_name: fileName,
-            message: data.message || `Alert triggered: ${data.last_value}`,
-            triggered_at: new Date().toISOString(),
-            alert_type: data.global_alert ? "Default" : "User",
-          },
-          ...prev,
-        ]);
+        const fileName = data.file_name || alerts.find(a => a.id === data.alert_id)?.file_name || "Unknown";
+        sseQueue.current.push({
+          id: data.alert_id,
+          file_name: fileName,
+          message: data.message || `Alert triggered: ${data.last_value}`,
+          triggered_at: new Date().toISOString(),
+          alert_type: data.global_alert ? "Default" : "User",
+        });
+
+        if (!sseTimeout.current) {
+          sseTimeout.current = setTimeout(() => {
+            setTriggeredLogs(prev => [...sseQueue.current, ...prev]);
+            sseQueue.current = [];
+            sseTimeout.current = null;
+          }, 1000); // batch updates every 1 second
+        }
       }
     };
 
@@ -167,15 +182,12 @@ const UserAlertsPage: React.FC = () => {
         `${import.meta.env.VITE_API_URL}/ttscanner/custom-alert/update/${updatedAlert.id}/`,
         updatedAlert
       );
-
-      setAlerts((prev) =>
-        prev.map((a) => (a.id === updatedAlert.id ? { ...a, ...updatedAlert } : a))
-      );
+      setAlerts(prev => prev.map(a => a.id === updatedAlert.id ? { ...a, ...updatedAlert } : a));
       setModalOpen(false);
-      return null; 
+      return null;
     } catch (err: any) {
       console.error("Failed to update alert", err);
-      return err?.data || { general: ["Failed to update alert."] }; 
+      return err?.data || { general: ["Failed to update alert."] };
     }
   };
 
@@ -183,7 +195,7 @@ const UserAlertsPage: React.FC = () => {
   const deleteAlert = async (id: number) => {
     try {
       await apiDelete(`${import.meta.env.VITE_API_URL}/ttscanner/custom-alert/delete/${id}/`);
-      setAlerts((prev) => prev.filter(a => a.id !== id));
+      setAlerts(prev => prev.filter(a => a.id !== id));
       setAlertToDelete(null);
     } catch (err) {
       console.error("Failed to delete alert", err);
@@ -196,11 +208,10 @@ const UserAlertsPage: React.FC = () => {
     <>
       <TopBar
         files={files}
-        onNewAlert={(alert) => setAlerts(prev => [...prev, alert])}
+        onNewAlert={alert => setAlerts(prev => [...prev, alert])}
       />
 
       <div className="p-4 space-y-6">
-
         {/* Tabs */}
         <div className="flex space-x-4 border-b border-white/20">
           <button
@@ -232,13 +243,8 @@ const UserAlertsPage: React.FC = () => {
             <table className="min-w-full divide-y divide-white/5">
               <thead>
                 <tr className="bg-[#111827] border-b border-white/10">
-                  {["ID", "File", "Message", "Triggered At", "Alert Type"].map((t) => (
-                    <th 
-                      key={t} 
-                      className="px-3 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider"
-                    >
-                      {t}
-                    </th>
+                  {["ID", "File", "Message", "Triggered At", "Alert Type"].map(t => (
+                    <th key={t} className="px-3 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">{t}</th>
                   ))}
                 </tr>
               </thead>
@@ -255,18 +261,10 @@ const UserAlertsPage: React.FC = () => {
                     <td className="px-3 py-4 text-white text-center">{log.id}</td>
                     <td className="px-3 py-4 text-white text-center">{log.file_name}</td>
                     <td className="px-3 py-4 text-white text-center">{log.message}</td>
-                    <td className="px-3 py-4 text-white text-center">
-                      {new Date(log.triggered_at).toLocaleString()}
-                    </td>
+                    <td className="px-3 py-4 text-white text-center">{new Date(log.triggered_at).toLocaleString()}</td>
                     <td className="px-3 py-4 text-center">
                       <div className="flex justify-center items-center">
-                        <span
-                          className={`px-3 py-1 text-xs font-medium rounded-full ${
-                            log.alert_type === "Default"
-                              ? "bg-purple-700/20 text-purple-400"
-                              : "bg-green-700/20 text-green-400"
-                          }`}
-                        >
+                        <span className={`px-3 py-1 text-xs font-medium rounded-full ${log.alert_type === "Default" ? "bg-purple-700/20 text-purple-400" : "bg-green-700/20 text-green-400"}`}>
                           {log.alert_type}
                         </span>
                       </div>
