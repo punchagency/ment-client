@@ -29,9 +29,10 @@ const CreateFileAssociation = () => {
     }
   };
 
-  // ✅ interval validation (min or h only)
+  // interval validation (min, h, or daily)
   const isValidInterval = (value: string) => {
-    return /^\d+(min|h)$/i.test(value.trim());
+    const v = value.trim().toLowerCase();
+    return /^\d+(min|h)$/.test(v) || v === "daily";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,7 +42,7 @@ const CreateFileAssociation = () => {
 
     if (!isValidInterval(interval)) {
       setErrors({
-        interval: ["Interval must be like 1min, 5min, 1h, 4h"],
+        interval: ["Interval must be like 1min, 5min, 1h, 4h, or daily"],
       });
       setLoading(false);
       return;
@@ -131,7 +132,7 @@ const CreateFileAssociation = () => {
             value={interval}
             onChange={(e) => setInterval(e.target.value)}
             className="w-full bg-[#111827] border border-white/20 text-white rounded-lg px-3 py-2"
-            placeholder="e.g. 5min or 1h"
+            placeholder="e.g. 5min, 1h or daily"
             required
           />
         </div>

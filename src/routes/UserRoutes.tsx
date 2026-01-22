@@ -1,7 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import UserScannerPage from "../pages/UserScannerPage";
 import FavoritesPage from "../pages/FavoritesPage";
-import SettingsPage from "../components/Settings";
+import SettingsPage from "../pages/Settings";
 import UserAlertsPage from "../pages/UserAlertsPage";
 
 interface UserRoutesProps {

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
+import { lightModalTheme, darkModalTheme, type ModalTheme } from "../themes/modalTheme";
 import { apiGet } from "../services/api";
 import { normalizeErrors } from "../utils/normalizeErrors";
+import { useTheme } from "../context/ThemeContext";
+import { type UserAlert } from "../services/UserAlert";
 
 interface FileAssociation {
   id: number;
@@ -9,23 +12,13 @@ interface FileAssociation {
   interval: string;
 }
 
-interface UserAlert {
-  file_association_id: number;
-  id: number;
-  file_name: string;
-  symbol_interval: string;
-  field_name: string;
-  condition_type: string;
-  compare_value: string;
-  last_value: string | null;
-  is_active: boolean;
-}
-
 interface Props {
   alert: UserAlert;
   files: FileAssociation[];
   onClose: () => void;
-  onSave: (updatedAlert: UserAlert) => Promise<Record<string, string[]> | null>; 
+  onSave: (
+    alert: UserAlert
+  ) => Promise<Record<string, string[]> | null>;
 }
 
 const CONDITION_OPTIONS = [
@@ -37,6 +30,7 @@ const CONDITION_OPTIONS = [
 ];
 
 const EditUserAlertModal: React.FC<Props> = ({ alert, files, onClose, onSave }) => {
+  const { theme } = useTheme();
   const [updatedAlert, setUpdatedAlert] = useState<UserAlert>(alert);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [csvSymInt, setCsvSymInt] = useState<string[]>([]);
@@ -45,6 +39,9 @@ const EditUserAlertModal: React.FC<Props> = ({ alert, files, onClose, onSave }) 
   const [currentFile, setCurrentFile] = useState<FileAssociation | null>(
     files.find(f => f.id === alert.file_association_id) || null
   );
+  
+  // Use the imported modal themes
+  const currentStyle: ModalTheme = theme === "dark" ? darkModalTheme : lightModalTheme;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
@@ -92,7 +89,6 @@ const EditUserAlertModal: React.FC<Props> = ({ alert, files, onClose, onSave }) 
     }
   };
 
-
   const handleFileChange = (fileId: number) => {
     const selectedFile = files.find(f => f.id === fileId) || null;
     setCurrentFile(selectedFile);
@@ -122,15 +118,32 @@ const EditUserAlertModal: React.FC<Props> = ({ alert, files, onClose, onSave }) 
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 px-4 z-50 animate-fadeIn">
-      <div className="bg-[#111827] rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-scaleIn">
+    <div 
+      className="fixed inset-0 flex items-center justify-center px-4 z-50 animate-fadeIn"
+      style={{ backgroundColor: theme === "light" ? "rgba(0, 0, 0, 0.3)" : "rgba(0, 0, 0, 0.5)" }}
+    >
+      <div 
+        className="rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-scaleIn"
+        style={{ 
+          backgroundColor: currentStyle.background,
+          color: currentStyle.text,
+        }}
+      >
 
         {/* Header */}
-        <div className="flex justify-between items-center px-6 py-4 border-b border-white/20">
-          <h2 className="text-xl font-bold text-white">Edit Alert</h2>
+        <div 
+          className="flex justify-between items-center px-6 py-4"
+          style={{ 
+            backgroundColor: currentStyle.headerBg,
+            color: currentStyle.headerText,
+            borderBottom: `1px solid ${currentStyle.border}`
+          }}
+        >
+          <h2 className="text-xl font-bold">Edit Alert</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white text-2xl transition-colors"
+            className="hover:opacity-70 text-2xl transition-opacity"
+            style={{ color: currentStyle.headerText }}
           >
             ✕
           </button>
@@ -139,19 +152,28 @@ const EditUserAlertModal: React.FC<Props> = ({ alert, files, onClose, onSave }) 
         {/* Scrollable Content */}
         <div ref={scrollRef} className="overflow-y-auto px-6 py-4 flex-1 space-y-4 max-h-[calc(90vh-120px)]">
 
-          <p className="text-gray-300">ID: {alert.id}</p>
+          <p style={{ color: currentStyle.textSecondary }}>ID: {alert.id}</p>
 
           {/* File Association */}
           <div>
-            <label className="text-gray-300 text-sm mb-1 block">File Association</label>
+            <label className="text-sm mb-1 block" style={{ color: currentStyle.textSecondary }}>
+              File Association
+            </label>
             <select
               value={updatedAlert.file_association_id}
               onChange={e => handleFileChange(parseInt(e.target.value))}
-              className="bg-[#1f2937] text-white px-3 py-2 rounded border border-white/20 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="px-3 py-2 rounded border w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50"
+              style={{
+                backgroundColor: currentStyle.inputBg,
+                borderColor: currentStyle.inputBorder,
+                color: currentStyle.inputText,
+              }}
             >
               <option value="" disabled>Select File Association</option>
               {files.map(f => (
-                <option key={f.id} value={f.id}>{f.algo} {f.group ? `- ${f.group}` : ""} ({f.interval})</option>
+                <option key={f.id} value={f.id}>
+                  {f.algo} {f.group ? `- ${f.group}` : ""} ({f.interval})
+                </option>
               ))}
             </select>
           </div>
@@ -159,11 +181,18 @@ const EditUserAlertModal: React.FC<Props> = ({ alert, files, onClose, onSave }) 
           {/* Symbol/Interval */}
           {!dropdownLoading && (
             <div>
-              <label className="text-gray-300 text-sm mb-1 block">Symbol/Interval</label>
+              <label className="text-sm mb-1 block" style={{ color: currentStyle.textSecondary }}>
+                Symbol/Interval
+              </label>
               <select
                 value={updatedAlert.symbol_interval}
                 onChange={e => setUpdatedAlert({ ...updatedAlert, symbol_interval: e.target.value })}
-                className="bg-[#1f2937] text-white px-3 py-2 rounded border border-white/20 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                className="px-3 py-2 rounded border w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50"
+                style={{
+                  backgroundColor: currentStyle.inputBg,
+                  borderColor: currentStyle.inputBorder,
+                  color: currentStyle.inputText,
+                }}
                 disabled={csvSymInt.length === 0}
               >
                 <option value="">Select Sym/Int</option>
@@ -175,11 +204,18 @@ const EditUserAlertModal: React.FC<Props> = ({ alert, files, onClose, onSave }) 
           {/* Field Name */}
           {!dropdownLoading && (
             <div>
-              <label className="text-gray-300 text-sm mb-1 block">Field Name</label>
+              <label className="text-sm mb-1 block" style={{ color: currentStyle.textSecondary }}>
+                Field Name
+              </label>
               <select
                 value={updatedAlert.field_name}
                 onChange={e => setUpdatedAlert({ ...updatedAlert, field_name: e.target.value })}
-                className="bg-[#1f2937] text-white px-3 py-2 rounded border border-white/20 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                className="px-3 py-2 rounded border w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50"
+                style={{
+                  backgroundColor: currentStyle.inputBg,
+                  borderColor: currentStyle.inputBorder,
+                  color: currentStyle.inputText,
+                }}
                 disabled={csvHeaders.length === 0}
               >
                 <option value="">Select Field</option>
@@ -190,11 +226,18 @@ const EditUserAlertModal: React.FC<Props> = ({ alert, files, onClose, onSave }) 
 
           {/* Condition */}
           <div>
-            <label className="text-gray-300 text-sm mb-1 block">Condition</label>
+            <label className="text-sm mb-1 block" style={{ color: currentStyle.textSecondary }}>
+              Condition
+            </label>
             <select
               value={updatedAlert.condition_type}
               onChange={e => setUpdatedAlert({ ...updatedAlert, condition_type: e.target.value })}
-              className="bg-[#1f2937] text-white px-3 py-2 rounded border border-white/20 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="px-3 py-2 rounded border w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              style={{
+                backgroundColor: currentStyle.inputBg,
+                borderColor: currentStyle.inputBorder,
+                color: currentStyle.inputText,
+              }}
             >
               {CONDITION_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>
@@ -202,7 +245,9 @@ const EditUserAlertModal: React.FC<Props> = ({ alert, files, onClose, onSave }) 
 
           {/* Compare Value */}
           <div>
-            <label className="text-gray-300 text-sm mb-1 block">Compare Value</label>
+            <label className="text-sm mb-1 block" style={{ color: currentStyle.textSecondary }}>
+              Compare Value
+            </label>
             <input
               type={isNumericField(updatedAlert.field_name) ? "number" : "text"}
               value={updatedAlert.condition_type === "change" ? "" : updatedAlert.compare_value}
@@ -219,15 +264,30 @@ const EditUserAlertModal: React.FC<Props> = ({ alert, files, onClose, onSave }) 
                 : isNumericField(updatedAlert.field_name) ? "Enter a number" : "Enter text"
               }
               disabled={updatedAlert.condition_type === "change"}
-              className={`bg-[#1f2937] text-white px-3 py-2 rounded border border-white/20 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${updatedAlert.condition_type === "change" ? "opacity-50 cursor-not-allowed" : ""}`}
+              className={`px-3 py-2 rounded border w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
+                updatedAlert.condition_type === "change" ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+              style={{
+                backgroundColor: currentStyle.inputBg,
+                borderColor: currentStyle.inputBorder,
+                color: currentStyle.inputText,
+              }}
             />
           </div>
 
           {/* Error Messages */}
           {modalErrors && (
-            <div ref={errorRef} className="mb-4 rounded-lg bg-red-600/20 p-3 text-red-100 border border-red-500 overflow-auto max-h-32 animate-slideDown">
+            <div 
+              ref={errorRef} 
+              className="mb-4 rounded-lg p-3 border overflow-auto max-h-32 animate-slideDown"
+              style={{
+                backgroundColor: currentStyle.errorBg,
+                borderColor: currentStyle.errorBorder,
+                color: currentStyle.errorText,
+              }}
+            >
               <div className="flex items-center mb-2">
-                <span className="mr-2 text-red-500">⚠️</span>
+                <span className="mr-2">⚠️</span>
                 <strong>Error:</strong>
               </div>
               <ul className="list-inside list-disc space-y-1 text-sm">
@@ -241,9 +301,31 @@ const EditUserAlertModal: React.FC<Props> = ({ alert, files, onClose, onSave }) 
         </div>
 
         {/* Footer Buttons */}
-        <div className="flex justify-end space-x-2 px-6 py-4 border-t border-white/20">
-          <button className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded transition" onClick={onClose}>Cancel</button>
-          <button className="bg-[#6b5bff] hover:bg-[#8b65ff] text-white px-4 py-2 rounded transition" onClick={handleSave} disabled={dropdownLoading}>Save</button>
+        <div 
+          className="flex justify-end space-x-2 px-6 py-4"
+          style={{ borderTop: `1px solid ${currentStyle.border}` }}
+        >
+          <button 
+            onClick={onClose}
+            className="px-4 py-2 rounded transition hover:opacity-90"
+            style={{
+              backgroundColor: currentStyle.buttonSecondaryBg,
+              color: currentStyle.buttonSecondaryText,
+            }}
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={handleSave} 
+            disabled={dropdownLoading}
+            className="px-4 py-2 rounded transition hover:opacity-90 disabled:opacity-50"
+            style={{
+              backgroundColor: currentStyle.buttonPrimaryBg,
+              color: "#ffffff",
+            }}
+          >
+            Save
+          </button>
         </div>
 
       </div>

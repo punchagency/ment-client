@@ -3,12 +3,14 @@ import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import Sidebar from "./components/Sidebar";
 import AdminRoutes from "./routes/AdminRoutes";
 import UserRoutes from "./routes/UserRoutes";
+import {useTheme} from "./context/ThemeContext";
 import Login from "./pages/Login";
 import { getUserRole, setUserRole, clearUserRole } from "./services/auth";
 
 function App() {
   const [role, setRole] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { theme } = useTheme();
 
   // Check localStorage on app load
   useEffect(() => {
@@ -49,7 +51,7 @@ function App() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#020617]">
+    <div className={`flex min-h-screen ${theme === "light" ? "bg-[#F0F8FF] text-black" : "bg-[#020617] text-white"}`}>
       {role === "admin" && <Sidebar onLogout={handleLogout} />}
       <main className="flex-1 p-6 overflow-y-auto text-white">
         <Routes>

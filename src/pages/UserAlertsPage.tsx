@@ -1,35 +1,27 @@
 import React, { useState, useEffect, useRef } from "react";
+import { getUserID } from "../services/auth";
 import { apiGet, apiPatch, apiDelete } from "../services/api";
+import TopBar from "../components/TopBar";
 import UserAlertTable from "../components/UserAlertTable";
 import EditUserAlertModal from "../components/EditUserAlertModal";
-import TopBar from "../components/TopBar";
-import { getUserID } from "../services/auth";
+import { useTheme } from "../context/ThemeContext";
+import { lightTheme, darkTheme, type TableTheme } from "../themes/tableTheme";
+import type { UserAlert } from "../services/UserAlert";
 
-export interface FileAssociation {
+
+interface FileAssociation {
   id: number;
   algo: string;
-  group?: string;
+  group: string;
   interval: string;
-}
-
-export interface UserAlert {
-  file_association_id: number;
-  id: number;
-  file_name: string;
-  symbol_interval: string;
-  field_name: string;
-  condition_type: string;
-  compare_value: string;
-  last_value: string | null;
-  is_active: boolean;
 }
 
 interface TriggeredAlert {
   id: number;
-  message: string;
   file_name: string;
+  message: string;
   triggered_at: string;
-  alert_type: "System" | "Default" | "User";
+  alert_type: string;
 }
 
 const UserAlertsPage: React.FC = () => {
@@ -42,6 +34,9 @@ const UserAlertsPage: React.FC = () => {
   const [currentAlert, setCurrentAlert] = useState<UserAlert | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [alertToDelete, setAlertToDelete] = useState<UserAlert | null>(null);
+
+  const { theme } = useTheme();
+  const currentTheme: TableTheme = theme === "dark" ? darkTheme : lightTheme;
 
   const sseQueue = useRef<TriggeredAlert[]>([]);
   const sseTimeout = useRef<any>(null);
@@ -130,7 +125,7 @@ const UserAlertsPage: React.FC = () => {
     fetchLogs();
   }, [activeTab, externalUserId, files]);
 
-  // SSE for live alerts with debouncing
+  // // SSE for live alerts with debouncing
   useEffect(() => {
     if (!externalUserId) return;
 
@@ -138,42 +133,46 @@ const UserAlertsPage: React.FC = () => {
     const eventSource = new EventSource(sseUrl);
 
     eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.error) return;
+      const snapshot = JSON.parse(event.data);
+      if (!Array.isArray(snapshot)) return;
 
-      // Update active alerts
-      setAlerts(prev =>
-        prev.map(alert =>
-          alert.id === data.alert_id
-            ? { ...alert, last_value: data.last_value, is_active: data.is_active }
-            : alert
-        )
-      );
-
-      // Queue triggered logs updates
-      if (!data.is_active) {
-        const fileName = data.file_name || alerts.find(a => a.id === data.alert_id)?.file_name || "Unknown";
-        sseQueue.current.push({
-          id: data.alert_id,
-          file_name: fileName,
-          message: data.message || `Alert triggered: ${data.last_value}`,
-          triggered_at: new Date().toISOString(),
-          alert_type: data.global_alert ? "Default" : "User",
+      // Update active alerts based on snapshot
+      setAlerts(prevAlerts => {
+        return prevAlerts.map(alert => {
+          const updated = snapshot.find(a => a.alert_id === alert.id);
+          return updated
+            ? { ...alert, last_value: updated.last_value, is_active: updated.is_active }
+            : alert;
         });
+      });
 
-        if (!sseTimeout.current) {
-          sseTimeout.current = setTimeout(() => {
-            setTriggeredLogs(prev => [...sseQueue.current, ...prev]);
-            sseQueue.current = [];
-            sseTimeout.current = null;
-          }, 1000); // batch updates every 1 second
+      // Queue triggered logs (optional)
+      snapshot.forEach(a => {
+        if (!a.is_active) {
+          const fileName = alerts.find(alert => alert.id === a.alert_id)?.file_name || "Unknown";
+          sseQueue.current.push({
+            id: a.alert_id,
+            file_name: fileName,
+            message: `Alert triggered: ${a.last_value}`,
+            triggered_at: new Date().toISOString(),
+            alert_type: "User",
+          });
         }
+      });
+
+      if (!sseTimeout.current && sseQueue.current.length > 0) {
+        sseTimeout.current = setTimeout(() => {
+          setTriggeredLogs(prev => [...sseQueue.current, ...prev]);
+          sseQueue.current = [];
+          sseTimeout.current = null;
+        }, 1000); // batch updates every 1 second
       }
     };
 
     eventSource.onerror = () => eventSource.close();
     return () => eventSource.close();
   }, [externalUserId, alerts]);
+
 
   // Save alert
   const saveAlert = async (updatedAlert: UserAlert): Promise<Record<string, string[]> | null> => {
@@ -213,16 +212,28 @@ const UserAlertsPage: React.FC = () => {
 
       <div className="p-4 space-y-6">
         {/* Tabs */}
-        <div className="flex space-x-4 border-b border-white/20">
+        <div className="flex space-x-4 border-b" style={{ borderColor: currentTheme.borderColor }}>
           <button
             onClick={() => setActiveTab("active")}
-            className={`px-4 py-2 font-semibold ${activeTab === "active" ? "border-b-2 border-blue-600 text-white" : "text-gray-400"}`}
+            className={`px-4 py-2 font-semibold ${activeTab === "active" ? "border-b-2 border-blue-600" : ""}`}
+            style={{
+              color: activeTab === "active" 
+                ? (theme === "light" ? "#1e40af" : "#ffffff")
+                : (theme === "light" ? "#6b7280" : "#9ca3af"),
+              borderColor: activeTab === "active" ? "#2563eb" : "transparent",
+            }}
           >
             Active Alerts
           </button>
           <button
             onClick={() => setActiveTab("logs")}
-            className={`px-4 py-2 font-semibold ${activeTab === "logs" ? "border-b-2 border-blue-600 text-white" : "text-gray-400"}`}
+            className={`px-4 py-2 font-semibold ${activeTab === "logs" ? "border-b-2 border-blue-600" : ""}`}
+            style={{
+              color: activeTab === "logs" 
+                ? (theme === "light" ? "#1e40af" : "#ffffff")
+                : (theme === "light" ? "#6b7280" : "#9ca3af"),
+              borderColor: activeTab === "logs" ? "#2563eb" : "transparent",
+            }}
           >
             Alert Logs
           </button>
@@ -239,38 +250,79 @@ const UserAlertsPage: React.FC = () => {
 
         {/* Triggered Logs */}
         {activeTab === "logs" && (
-          <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#0B1220]">
-            <table className="min-w-full divide-y divide-white/5">
-              <thead>
-                <tr className="bg-[#111827] border-b border-white/10">
+          <div 
+            className="w-full overflow-auto rounded-lg"
+            style={{ border: `1px solid ${currentTheme.borderColor}` }}
+          >
+            <table className="min-w-full border-collapse">
+              <thead
+                style={theme === "light" ? { 
+                  backgroundColor: currentTheme.headerBg, 
+                  color: currentTheme.headerText 
+                } : undefined}
+              >
+                <tr>
                   {["ID", "File", "Message", "Triggered At", "Alert Type"].map(t => (
-                    <th key={t} className="px-3 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">{t}</th>
+                    <th
+                      key={t}
+                      style={theme === "light" ? {
+                        backgroundColor: currentTheme.headerBg,
+                        color: currentTheme.headerText,
+                        borderBottom: `1px solid ${currentTheme.borderColor}`,
+                      } : undefined}
+                      className={`px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider ${
+                        theme === "dark" ? "hover:bg-gray-700/30" : "hover:bg-gray-200"
+                      }`}
+                    >
+                      {t}
+                    </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
-                {triggeredLogs.map(log => (
-                  <tr
-                    key={log.id + log.triggered_at}
-                    className={`hover:bg-white/5 ${
-                      new Date().getTime() - new Date(log.triggered_at).getTime() < 5000 
-                        ? 'bg-purple-800/50 animate-pulse' 
-                        : ''
-                    }`}
-                  >
-                    <td className="px-3 py-4 text-white text-center">{log.id}</td>
-                    <td className="px-3 py-4 text-white text-center">{log.file_name}</td>
-                    <td className="px-3 py-4 text-white text-center">{log.message}</td>
-                    <td className="px-3 py-4 text-white text-center">{new Date(log.triggered_at).toLocaleString()}</td>
-                    <td className="px-3 py-4 text-center">
-                      <div className="flex justify-center items-center">
-                        <span className={`px-3 py-1 text-xs font-medium rounded-full ${log.alert_type === "Default" ? "bg-purple-700/20 text-purple-400" : "bg-green-700/20 text-green-400"}`}>
-                          {log.alert_type}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+
+              <tbody>
+                {triggeredLogs.map((log, idx) => {
+                  const lightRowBg = idx % 2 === 0 ? "#eef2ff" : "#e0e7ff";
+                  const darkRowBg = idx % 2 === 0 ? "#0b1220" : "#0f172a";
+                  const rowBg = theme === "dark" ? darkRowBg : lightRowBg;
+
+                  const isRecent = new Date().getTime() - new Date(log.triggered_at).getTime() < 5000;
+
+                  return (
+                    <tr
+                      key={log.id + log.triggered_at}
+                      className={`transition-all hover:brightness-110 dark:hover:brightness-125 ${isRecent ? 'animate-pulse' : ''}`}
+                      style={{
+                        backgroundColor: isRecent 
+                          ? (theme === "light" ? "rgba(168, 85, 247, 0.2)" : "rgba(168, 85, 247, 0.3)")
+                          : rowBg,
+                        color: currentTheme.rowText,
+                        borderBottom: `1px solid ${currentTheme.borderColor}`,
+                        fontWeight: currentTheme.rowFontWeight,
+                      }}
+                    >
+                      <td className="px-3 py-4 text-sm text-center">{log.id}</td>
+                      <td className="px-3 py-4 text-sm text-center">{log.file_name}</td>
+                      <td className="px-3 py-4 text-sm text-center">{log.message}</td>
+                      <td className="px-3 py-4 text-sm text-center">{new Date(log.triggered_at).toLocaleString()}</td>
+                      <td className="px-3 py-4 text-center">
+                        <div className="flex justify-center items-center">
+                          <span 
+                            className="px-3 py-1 text-xs font-medium rounded-full"
+                            style={{
+                              backgroundColor: log.alert_type === "Default" 
+                                ? (theme === "light" ? "rgba(168, 85, 247, 0.15)" : "rgba(168, 85, 247, 0.25)")
+                                : (theme === "light" ? "rgba(34, 197, 94, 0.15)" : "rgba(34, 197, 94, 0.25)"),
+                              color: log.alert_type === "Default" ? "#a855f7" : "#22c55e",
+                            }}
+                          >
+                            {log.alert_type}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -289,12 +341,36 @@ const UserAlertsPage: React.FC = () => {
         {/* Delete Confirmation */}
         {alertToDelete && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 px-4">
-            <div className="bg-[#111827] p-6 rounded-lg shadow-lg w-full max-w-md">
-              <h2 className="text-xl font-bold mb-4 text-white">Confirm Deletion</h2>
-              <p className="mb-4 text-white">Are you sure you want to delete alert ID "{alertToDelete.id}"?</p>
+            <div 
+              className="p-6 rounded-lg shadow-lg w-full max-w-md"
+              style={{
+                backgroundColor: theme === "light" ? "#ffffff" : "#111827",
+                color: theme === "light" ? "#111827" : "#f9fafb",
+              }}
+            >
+              <h2 className="text-xl font-bold mb-4">Confirm Deletion</h2>
+              <p className="mb-4">Are you sure you want to delete alert ID "{alertToDelete.id}"?</p>
               <div className="flex justify-end space-x-2">
-                <button onClick={() => setAlertToDelete(null)} className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded">Cancel</button>
-                <button onClick={() => deleteAlert(alertToDelete.id)} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">Delete</button>
+                <button 
+                  onClick={() => setAlertToDelete(null)}
+                  style={{
+                    backgroundColor: theme === "light" ? "#e5e7eb" : "#4b5563",
+                    color: theme === "light" ? "#374151" : "#f9fafb",
+                  }}
+                  className="px-4 py-2 rounded hover:opacity-90"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => deleteAlert(alertToDelete.id)}
+                  style={{
+                    backgroundColor: "#dc2626",
+                    color: "#ffffff",
+                  }}
+                  className="px-4 py-2 rounded hover:bg-red-700"
+                >
+                  Delete
+                </button>
               </div>
             </div>
           </div>

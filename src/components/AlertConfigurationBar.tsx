@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { apiGet } from "../services/api"; 
 import { normalizeErrors } from "../utils/normalizeErrors";
+import { useTheme } from "../context/ThemeContext";
+import { lightModalTheme, darkModalTheme, type ModalTheme } from "../themes/modalTheme";
 
 interface FileAssociation {
   id: number;
@@ -25,6 +27,9 @@ const CONDITION_OPTIONS = [
 ];
 
 const AlertConfigurationBar: React.FC<Props> = ({ isOpen, onClose, onSave }) => {
+  const { theme } = useTheme();
+  const currentStyle: ModalTheme = theme === "dark" ? darkModalTheme : lightModalTheme;
+  
   const firstSelectRef = useRef<HTMLSelectElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
@@ -140,25 +145,61 @@ const AlertConfigurationBar: React.FC<Props> = ({ isOpen, onClose, onSave }) => 
     }
   }, [modalErrors]);
 
+  if (!isOpen) return null;
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50 px-4">
-      <div className="bg-[#111827] p-6 rounded-2xl shadow-2xl w-full max-w-lg relative transform transition-all scale-100 md:scale-100 overflow-y-auto max-h-[90vh] scrollbar-thin scrollbar-thumb-[#6b5bff] scrollbar-track-[#1f2937] scrollbar-thumb-rounded-full scrollbar-track-rounded-full">
+    <div 
+      className="fixed inset-0 flex items-center justify-center z-50 px-4 animate-fadeIn"
+      style={{ backgroundColor: theme === "light" ? "rgba(0, 0, 0, 0.3)" : "rgba(0, 0, 0, 0.5)" }}
+    >
+      <div 
+        className="p-6 rounded-2xl shadow-2xl w-full max-w-lg relative transform transition-all scale-100 md:scale-100 overflow-y-auto max-h-[90vh] scrollbar-thin scrollbar-thumb-rounded-full scrollbar-track-rounded-full animate-scaleIn"
+        style={{ 
+          backgroundColor: currentStyle.background,
+          color: currentStyle.text,
+          scrollbarColor: theme === "light" ? "#6b5bff #f3f4f6" : "#6b5bff #1f2937",
+        }}
+      >
 
         {/* Header */}
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-white">Create New Alert</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">✕</button>
+        <div 
+          className="flex justify-between items-center mb-4 pb-4"
+          style={{ borderBottom: `1px solid ${currentStyle.border}` }}
+        >
+          <h2 
+            className="text-2xl font-bold"
+            style={{ color: currentStyle.text }}
+          >
+            Create New Alert
+          </h2>
+          <button 
+            onClick={onClose} 
+            className="text-2xl transition-opacity hover:opacity-70"
+            style={{ color: currentStyle.textSecondary }}
+          >
+            ✕
+          </button>
         </div>
 
         <div ref={scrollRef} className="space-y-4">
           {/* File Association */}
           <div className="flex flex-col">
-            <label className="text-gray-300 font-medium mb-1">Select Table</label>
+            <label 
+              className="font-medium mb-1"
+              style={{ color: currentStyle.textSecondary }}
+            >
+              Select Table
+            </label>
             <select
               ref={firstSelectRef}
               value={form.file_association || ""}
               onChange={e => handleFileChange(+e.target.value)}
-              className="bg-[#2a2a40] text-white px-3 py-2 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6b5bff] transition"
+              className="px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50"
+              style={{
+                backgroundColor: currentStyle.inputBg,
+                borderColor: currentStyle.inputBorder,
+                color: currentStyle.inputText,
+              }}
             >
               <option value="" disabled>Select File Association</option>
               {files.map(f => (
@@ -171,12 +212,22 @@ const AlertConfigurationBar: React.FC<Props> = ({ isOpen, onClose, onSave }) => 
 
           {/* Symbol/Interval */}
           <div className="flex flex-col">
-            <label className="text-gray-300 font-medium mb-1">Symbol / Interval</label>
+            <label 
+              className="font-medium mb-1"
+              style={{ color: currentStyle.textSecondary }}
+            >
+              Symbol / Interval
+            </label>
             <select
               value={form.symbol_interval}
               onChange={e => setForm({ ...form, symbol_interval: e.target.value })}
               disabled={dropdownLoading || csvSymInt.length === 0}
-              className="bg-[#2a2a40] text-white px-3 py-2 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6b5bff] transition"
+              className="px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50"
+              style={{
+                backgroundColor: currentStyle.inputBg,
+                borderColor: currentStyle.inputBorder,
+                color: currentStyle.inputText,
+              }}
             >
               <option value="">Select Symbol/Interval</option>
               {csvSymInt.map(s => <option key={s} value={s}>{s}</option>)}
@@ -185,12 +236,22 @@ const AlertConfigurationBar: React.FC<Props> = ({ isOpen, onClose, onSave }) => 
 
           {/* Field Name */}
           <div className="flex flex-col">
-            <label className="text-gray-300 font-medium mb-1">Field Name</label>
+            <label 
+              className="font-medium mb-1"
+              style={{ color: currentStyle.textSecondary }}
+            >
+              Field Name
+            </label>
             <select
               value={form.field_name}
               onChange={e => setForm({ ...form, field_name: e.target.value })}
               disabled={dropdownLoading || csvHeaders.length === 0}
-              className="bg-[#2a2a40] text-white px-3 py-2 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6b5bff] transition"
+              className="px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50"
+              style={{
+                backgroundColor: currentStyle.inputBg,
+                borderColor: currentStyle.inputBorder,
+                color: currentStyle.inputText,
+              }}
             >
               <option value="">Select Field</option>
               {csvHeaders.map(h => <option key={h} value={h}>{h}</option>)}
@@ -199,11 +260,21 @@ const AlertConfigurationBar: React.FC<Props> = ({ isOpen, onClose, onSave }) => 
 
           {/* Condition */}
           <div className="flex flex-col">
-            <label className="text-gray-300 font-medium mb-1">Condition</label>
+            <label 
+              className="font-medium mb-1"
+              style={{ color: currentStyle.textSecondary }}
+            >
+              Condition
+            </label>
             <select
               value={form.condition_type}
               onChange={e => setForm({ ...form, condition_type: e.target.value })}
-              className="bg-[#2a2a40] text-white px-3 py-2 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6b5bff] transition"
+              className="px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              style={{
+                backgroundColor: currentStyle.inputBg,
+                borderColor: currentStyle.inputBorder,
+                color: currentStyle.inputText,
+              }}
             >
               {CONDITION_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>
@@ -211,22 +282,40 @@ const AlertConfigurationBar: React.FC<Props> = ({ isOpen, onClose, onSave }) => 
 
           {/* Compare Value */}
           <div className="flex flex-col">
-            <label className="text-gray-300 font-medium mb-1">Compare Value</label>
+            <label 
+              className="font-medium mb-1"
+              style={{ color: currentStyle.textSecondary }}
+            >
+              Compare Value
+            </label>
             <input
               type={isNumericField(form.field_name) ? "number" : "text"}
               value={form.condition_type === "change" ? "" : form.compare_value}
               onChange={e => setForm({ ...form, compare_value: e.target.value })}
               placeholder={form.condition_type === "change" ? "Not required for 'Any Change'" : "Enter value"}
               disabled={form.condition_type === "change"}
-              className={`bg-[#2a2a40] text-white px-3 py-2 rounded-lg border border-gray-600 focus:outline-none focus:ring-2 focus:ring-[#6b5bff] transition ${
+              className={`px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
                 form.condition_type === "change" ? "opacity-50 cursor-not-allowed" : ""
               }`}
+              style={{
+                backgroundColor: currentStyle.inputBg,
+                borderColor: currentStyle.inputBorder,
+                color: currentStyle.inputText,
+              }}
             />
           </div>
 
           {/* Errors */}
           {modalErrors && (
-            <div ref={errorRef} className="mt-4 bg-red-900/30 border border-red-500 p-4 rounded-lg text-red-200">
+            <div 
+              ref={errorRef} 
+              className="mt-4 p-4 rounded-lg border"
+              style={{
+                backgroundColor: currentStyle.errorBg,
+                borderColor: currentStyle.errorBorder,
+                color: currentStyle.errorText,
+              }}
+            >
               <ul className="list-disc list-inside space-y-1 text-sm">
                 {Object.entries(modalErrors).map(([key, vals]) => (
                   <li key={key}>
@@ -241,18 +330,29 @@ const AlertConfigurationBar: React.FC<Props> = ({ isOpen, onClose, onSave }) => 
         </div>
 
         {/* Footer */}
-        <div className="mt-6 flex justify-end space-x-3">
+        <div 
+          className="mt-6 pt-4 flex justify-end space-x-3"
+          style={{ borderTop: `1px solid ${currentStyle.border}` }}
+        >
           <button
-            className="bg-gray-700 hover:bg-gray-600 text-white px-5 py-2 rounded-lg font-medium transition"
+            className="px-5 py-2 rounded-lg font-medium transition hover:opacity-90 disabled:opacity-50"
             onClick={onClose}
             disabled={saving}
+            style={{
+              backgroundColor: currentStyle.buttonSecondaryBg,
+              color: currentStyle.buttonSecondaryText,
+            }}
           >
             Cancel
           </button>
           <button
-            className="bg-[#6b5bff] hover:bg-[#8b65ff] text-white px-5 py-2 rounded-lg font-medium transition flex items-center justify-center"
+            className="px-5 py-2 rounded-lg font-medium transition hover:opacity-90 disabled:opacity-50 flex items-center justify-center"
             onClick={handleSave}
             disabled={saving || dropdownLoading || !form.file_association}
+            style={{
+              backgroundColor: currentStyle.buttonPrimaryBg,
+              color: "#ffffff",
+            }}
           >
             {saving ? "Saving..." : "Save Alert"}
           </button>
