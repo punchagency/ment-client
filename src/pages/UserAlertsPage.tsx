@@ -380,4 +380,6 @@ const UserAlertsPage: React.FC = () => {
   );
 };
 
+export type { FileAssociation, UserAlert };
+
 export default UserAlertsPage;
