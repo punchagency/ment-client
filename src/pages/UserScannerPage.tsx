@@ -3,12 +3,8 @@ import TopBar from "../components/TopBar";
 import FileDataTable from "../components/FileDataTable";
 import SearchableDropdown from "../components/SearchableDropdown";
 import FilterSidebar from "../components/FilterSidebar";
-import {
-  fetchAlgos,
-  fetchGroups,
-  fetchIntervals,
-  lookupFileAssociation,
-} from "../services/fileAssociationApi";
+import { fetchAlgos, fetchGroups, fetchIntervals, lookupFileAssociation } from "../services/fileAssociationApi";
+import { useTheme } from "../context/ThemeContext"; 
 
 interface Option {
   label: string;
@@ -21,7 +17,9 @@ interface UserScannerPageProps {
 
 const MAX_RETRIES = 3;
 
-const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout })=> {
+const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout }) => {
+  const { theme } = useTheme(); 
+
   const [algos, setAlgos] = useState<Option[]>([]);
   const [groups, setGroups] = useState<Option[]>([]);
   const [intervals, setIntervals] = useState<Option[]>([]);
@@ -43,7 +41,7 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout })=> {
   const [loading, setLoading] = useState<boolean>(false);
 
   const sseRef = useRef<EventSource | null>(null);
-  const firstLoadRef = useRef(true); 
+  const firstLoadRef = useRef(true);
 
   const fileType = useMemo(() => {
     if (!currentFileName) return null;
@@ -64,18 +62,18 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout })=> {
     }
   };
 
-  // Load Algos
+  // --- Load Algos ---
   useEffect(() => {
     fetchWithRetry(fetchAlgos)
       .then(data => {
         const options = data.map((a: any) => ({ label: `${a.algo_name} Algo`, value: a.id }));
         setAlgos(options);
-        if (options.length > 0) setSelectedAlgo(options[0]); 
+        if (options.length > 0) setSelectedAlgo(options[0]);
       })
       .catch(console.error);
   }, []);
 
-  // Load Groups
+  // --- Load Groups ---
   useEffect(() => {
     if (!selectedAlgo) return;
 
@@ -86,7 +84,7 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout })=> {
         setGroups(options);
 
         if (firstLoadRef.current) {
-          setSelectedGroup(options[0]); 
+          setSelectedGroup(options[0]);
         } else {
           setSelectedGroup({ label: "Select Group...", value: null });
           setSelectedInterval({ label: "Select Interval...", value: null });
@@ -95,7 +93,7 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout })=> {
       .catch(console.error);
   }, [selectedAlgo]);
 
-  // Load Intervals
+  // --- Load Intervals ---
   useEffect(() => {
     if (!selectedAlgo || !selectedGroup || selectedGroup.value == null) return;
 
@@ -106,7 +104,7 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout })=> {
 
         if (firstLoadRef.current) {
           setSelectedInterval(options.length > 0 ? options[0] : null);
-          firstLoadRef.current = false; 
+          firstLoadRef.current = false;
         } else {
           setSelectedInterval({ label: "Select Interval...", value: null });
         }
@@ -114,6 +112,7 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout })=> {
       .catch(console.error);
   }, [selectedGroup, selectedAlgo]);
 
+  // --- Lookup File Association ---
   useEffect(() => {
     if (!selectedAlgo || !selectedGroup || selectedGroup.value == null || !selectedInterval || selectedInterval.value == null) {
       setFullTableData([]);
@@ -137,7 +136,6 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout })=> {
     )
       .then(lookup => {
         setCurrentFileId(lookup.file_association_id);
-        console.log("Full Data Table: " + JSON.stringify(fullTableData, null, 2));
         const algoName = selectedAlgo?.label.replace(" Algo", "") || "UnknownAlgo";
         const groupName = selectedGroup?.label || "NoGroup";
         const intervalName = selectedInterval?.label || "UnknownInterval";
@@ -153,7 +151,6 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout })=> {
       .finally(() => setLoading(false));
   }, [selectedAlgo, selectedGroup, selectedInterval]);
 
-  // SSE for auto-update
   useEffect(() => {
     if (!currentFileId) return;
 
@@ -163,7 +160,6 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout })=> {
     sse.onmessage = event => {
       try {
         const payload = JSON.parse(event.data);
-        console.log(payload);
         if (payload.data_version > dataVersion) {
           setFullTableData(payload.rows ?? []);
           setDataVersion(payload.data_version ?? 0);
@@ -179,7 +175,7 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout })=> {
     };
 
     return () => sse.close();
-  }, [currentFileId, dataVersion]);
+  }, [currentFileId]);
 
   const handleTargetChange = (t1?: boolean, t2?: boolean) => {
     setTarget1(t1);
@@ -226,9 +222,32 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout })=> {
     });
   }, [fullTableData, target1, target2, filters, targetColumns]);
 
+  const containerClasses =
+    theme === "light"
+      ? "min-h-screen bg-white text-black font-sans relative"
+      : "min-h-screen bg-gray-900 text-white font-sans relative";
+
+  const filterSidebarClasses =
+    theme === "light"
+      ? `fixed top-0 right-0 h-full w-80 bg-white shadow-2xl p-6 z-20 transition-transform duration-700 ease-[cubic-bezier(.68,-0.55,.265,1.55)] ${showFilters ? "translate-x-0" : "translate-x-full"}`
+      : `fixed top-0 right-0 h-full w-80 bg-gray-900 shadow-2xl p-6 z-20 transition-transform duration-700 ease-[cubic-bezier(.68,-0.55,.265,1.55)] ${showFilters ? "translate-x-0" : "translate-x-full"}`;
+
+  const filterButtonClasses =
+    theme === "light"
+      ? "fixed top-28 right-11 z-30 p-3 bg-gray-200 rounded-full hover:bg-gray-300 shadow-lg transition-all duration-500 ease-in-out"
+      : "fixed top-28 right-11 z-30 p-3 bg-gray-800 rounded-full hover:bg-gray-700 shadow-lg transition-all duration-500 ease-in-out";
+
+  const infoBadgeClasses =
+    theme === "light"
+      ? "text-white font-semibold text-lg bg-[#0072ff] px-3 py-1 rounded-lg shadow-md"
+      : "text-yellow-400 font-semibold text-lg bg-gray-800/70 px-3 py-1 rounded-lg shadow-md";
+
+  const noDataTextClasses = theme === "light" ? "text-gray-800" : "text-gray-400";
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white font-sans relative">
-      <TopBar onLogout={onLogout}/>
+    <div className={containerClasses}>
+      <TopBar onLogout={onLogout} />
+
       <div className="max-w-full p-5 flex flex-wrap gap-3 items-center z-10 relative">
         <label className="font-semibold">Algo:</label>
         <div className="w-64">
@@ -244,17 +263,13 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout })=> {
         </div>
       </div>
 
-      <button
-        onClick={() => setShowFilters(prev => !prev)}
-        className="fixed top-28 right-11 z-30 p-3 bg-gray-800 rounded-full hover:bg-gray-700 shadow-lg transition-all duration-500 ease-in-out"
-        title="Filters"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <button onClick={() => setShowFilters(prev => !prev)} className={filterButtonClasses} title="Filters">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M6 8h12M10 12h4M14 16h-4" />
         </svg>
       </button>
 
-      <div className={`fixed top-0 right-0 h-full w-80 bg-gray-900 shadow-2xl p-6 z-20 transition-transform duration-700 ease-[cubic-bezier(.68,-0.55,.265,1.55)] ${showFilters ? "translate-x-0" : "translate-x-full"}`}>
+      <div className={filterSidebarClasses}>
         <FilterSidebar
           filters={filters}
           setFilters={setFilters}
@@ -275,7 +290,7 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout })=> {
       <div className="p-5 overflow-x-auto">
         {currentFileName && (
           <div className="mb-3">
-            <span className="text-yellow-400 font-semibold text-lg bg-gray-800/70 px-3 py-1 rounded-lg shadow-md">
+            <span className={infoBadgeClasses}>
               Viewing: {currentFileName} {loading && "(Loading...)"}
             </span>
           </div>
@@ -283,7 +298,7 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout })=> {
         {filteredData.length > 0 ? (
           <FileDataTable rows={filteredData} visibleColumns={visibleColumns} fileAssociationId={currentFileId!} fileType={fileType} />
         ) : (
-          <p className="text-gray-400">{loading ? "Loading data..." : "No data available for this selection."}</p>
+          <p className={noDataTextClasses}>{loading ? "Loading data..." : "No data available for this selection."}</p>
         )}
       </div>
     </div>

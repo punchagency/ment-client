@@ -4,6 +4,7 @@ import { fetchFavoriteRows, deleteFavorite } from "../services/favorites";
 import FavoritesTable from "../components/FavoritesTable";
 import TopBar from "../components/TopBar";
 import Toast from "../components/Toast";
+import { useTheme } from "../context/ThemeContext";
 
 interface FavoriteRowType {
   row_hash: string;
@@ -19,6 +20,8 @@ interface FavoriteBatch {
 }
 
 const FavoritesPage: React.FC = () => {
+  const { theme } = useTheme();
+
   const [userId, setUserId] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<FavoriteBatch[] | null>(null); 
   const [toastMessage, setToastMessage] = useState<{
@@ -30,7 +33,6 @@ const FavoritesPage: React.FC = () => {
   // Load user ID
   useEffect(() => {
     const id = getUserID();
-    console.log("External User ID:", id);
     setUserId(id ? id.toString() : null);
   }, []);
 
@@ -49,7 +51,6 @@ const FavoritesPage: React.FC = () => {
       });
   }, [userId]);
 
-  // Handle delete
   const handleDelete = async (row: FavoriteRowType) => {
     if (!row.favorite_id) return;
 
@@ -73,7 +74,6 @@ const FavoritesPage: React.FC = () => {
     }
   };
 
-  // Handle view
   const handleView = (row: FavoriteRowType) => {
     window.dispatchEvent(
       new CustomEvent("view-favorite-row", { detail: row.row_hash })
@@ -112,7 +112,12 @@ const FavoritesPage: React.FC = () => {
         {favorites !== null && favorites.length > 0 &&
           favorites.map((batch) => (
             <div key={batch.file_association_id} className="mb-8">
-              <h2 className="text-lg font-semibold mb-2 text-gray-200">
+              <h2
+                className="text-lg font-semibold mb-2"
+                style={{
+                  color: theme === "light" ? "#164e63" : "#e5e7eb", // Light blue shade for light theme
+                }}
+              >
                 Table: {batch.file_association_name}
               </h2>
               <FavoritesTable

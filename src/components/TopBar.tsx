@@ -3,16 +3,17 @@ import { useNavigate, useLocation } from "react-router-dom";
 import AlertConfigurationBar from "./AlertConfigurationBar";
 import { apiPost } from "../services/api"; 
 import { getUserID } from "../services/auth";
-import type { FileAssociation } from "../pages/UserAlertsPage";
-import type { UserAlert } from "../pages/UserAlertsPage"; 
+import type { FileAssociation, UserAlert } from "../pages/UserAlertsPage"; 
+import { useTheme } from "../context/ThemeContext";
 
 interface TopBarProps {
   files?: FileAssociation[];
   onNewAlert?: (alert: UserAlert) => void;
-  onLogout?: () => void; // <- added
+  onLogout?: () => void;
 }
 
 const TopBar: React.FC<TopBarProps> = ({ files, onNewAlert, onLogout }) => {
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [externalUserId, setExternalUserId] = useState<string | null>(null);
@@ -52,59 +53,63 @@ const TopBar: React.FC<TopBarProps> = ({ files, onNewAlert, onLogout }) => {
       onNewAlert?.(newAlert);
       setShowAlertBar(false);
     } catch (err: any) {
-      console.error("Error saving alert:", err);
-      const errorData = err.response?.data || {};
+      console.error("Error saving alert:", err.data);
+      const errorData = err.data || {};
       return errorData || { general: ["Something went wrong"] };
     }
   };
 
+  const headerClasses = theme === "light"
+    ? "bg-[#164e63] text-white p-4 rounded-t-lg flex flex-col"
+    : "bg-gray-950 text-white p-4 rounded-t-lg flex flex-col";
+
+  const navLinkClasses = (path: string) =>
+    `font-bold cursor-pointer ${
+      location.pathname === path ? "border-b-2 border-blue-500" : ""
+    }`;
+
+  const setAlertBtnClasses = "bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded";
+  const logoutBtnClasses = "bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded";
+
   return (
     <>
-      <header className="bg-gray-950 p-4 rounded-t-lg flex flex-col">
+      <header className={headerClasses}>
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">{getTitle()}</h1>
+          <h1 className={`text-2xl font-bold ${theme === "light" ? "text-white" : ""}`}>
+            {getTitle()}
+          </h1>
           <div className="flex items-center space-x-6">
             <nav>
               <ul className="flex space-x-5">
                 <li>
-                  <a
-                    className={`font-bold cursor-pointer ${location.pathname === "/" ? "border-b-2 border-blue-500" : ""}`}
-                    onClick={() => navigate("/")}
-                  >Scanner</a>
+                  <a className={navLinkClasses("/")} onClick={() => navigate("/")}>
+                    Scanner
+                  </a>
                 </li>
                 <li>
-                  <a
-                    className={`font-bold cursor-pointer ${location.pathname === "/favorite" ? "border-b-2 border-blue-500" : ""}`}
-                    onClick={() => navigate("/favorite")}
-                  >Favorites</a>
+                  <a className={navLinkClasses("/favorite")} onClick={() => navigate("/favorite")}>
+                    Favorites
+                  </a>
                 </li>
                 <li>
-                  <a
-                    className={`font-bold cursor-pointer ${location.pathname === "/alerts" ? "border-b-2 border-blue-500" : ""}`}
-                    onClick={() => navigate("/alerts")}
-                  >Alerts</a>
+                  <a className={navLinkClasses("/alerts")} onClick={() => navigate("/alerts")}>
+                    Alerts
+                  </a>
                 </li>
                 <li>
-                  <a
-                    className={`font-bold cursor-pointer ${location.pathname === "/settings" ? "border-b-2 border-blue-500" : ""}`}
-                    onClick={() => navigate("/settings")}
-                  >Settings</a>
+                  <a className={navLinkClasses("/settings")} onClick={() => navigate("/settings")}>
+                    Settings
+                  </a>
                 </li>
               </ul>
             </nav>
 
-            <button
-              onClick={() => setShowAlertBar(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded"
-            >
+            <button onClick={() => setShowAlertBar(true)} className={setAlertBtnClasses}>
               Set New Alert +
             </button>
 
             {onLogout && (
-              <button
-                onClick={onLogout}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
-              >
+              <button onClick={onLogout} className={logoutBtnClasses}>
                 Logout
               </button>
             )}

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTheme } from "../context/ThemeContext"; // adjust path if needed
 
 interface FilterSidebarProps {
   filters: Record<string, any>;
@@ -13,7 +14,7 @@ interface FilterSidebarProps {
 
 const FilterFields: Record<string, { key: string; type: string; options?: string[] }[]> = {
   TTScanner: [
-    { key: "Direction", type: "string", options: ["LONG", "SHORT", "FLAT"] },  //Needs Changes 
+    { key: "Direction", type: "string", options: ["LONG", "SHORT", "FLAT"] },
     { key: "Bars Since Entry", type: "number" },
     { key: "Target #1 Hit", type: "boolean" },
     { key: "Target #2 Hit", type: "boolean" },
@@ -46,14 +47,20 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   fileType,
   setVisibleColumns,
 }) => {
-  if (!fileType || !FilterFields[fileType]) return <div className="text-gray-400">No filters available</div>;
+  const { theme } = useTheme();
+  const isLight = theme === "light";
+
+  if (!fileType || !FilterFields[fileType]) 
+    return <div className="text-gray-400">No filters available</div>;
 
   const fields = FilterFields[fileType];
 
   const handleStringFilterChange = (key: string, value: string) => {
     setFilters(prev => {
       const currentArr = prev[key]?.value || [];
-      const newArr = currentArr.includes(value) ? currentArr.filter((v: string) => v !== value) : [...currentArr, value];
+      const newArr = currentArr.includes(value)
+        ? currentArr.filter((v: string) => v !== value)
+        : [...currentArr, value];
       if (newArr.length === 0) {
         const { [key]: _, ...rest } = prev;
         return rest;
@@ -85,15 +92,22 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   };
 
   return (
-    <div className="h-full bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950 text-gray-200 p-6 rounded-r-xl shadow-2xl flex flex-col">
+    <div
+      className={`h-full p-6 rounded-r-xl shadow-2xl flex flex-col 
+        ${isLight ? "bg-white text-black" : "bg-gradient-to-b from-gray-950 via-gray-900 to-gray-950 text-gray-200"}`}
+    >
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white tracking-wide">Filters</h2>
+        <h2 className={`text-2xl font-bold tracking-wide ${isLight ? "text-black" : "text-white"}`}>
+          Filters
+        </h2>
         <button
           onClick={() => {
             onClearFilters();
             setVisibleColumns?.([]);
           }}
-          className="text-sm px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold"
+          className={`text-sm px-4 py-2 rounded-lg font-semibold ${
+            isLight ? "bg-blue-200 hover:bg-blue-300 text-black" : "bg-blue-600 hover:bg-blue-500 text-white"
+          }`}
         >
           Clear All
         </button>
@@ -114,7 +128,13 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                       <button
                         key={opt}
                         onClick={() => handleStringFilterChange(field.key, opt)}
-                        className={`px-3 py-1 rounded-full ${selected ? "bg-blue-500 text-white" : "bg-gray-800 text-gray-200"}`}
+                        className={`px-3 py-1 rounded-full ${
+                          selected
+                            ? "bg-blue-500 text-white"
+                            : isLight
+                            ? "bg-gray-200 text-black"
+                            : "bg-gray-800 text-gray-200"
+                        }`}
                       >
                         {opt}
                       </button>
@@ -135,14 +155,18 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     placeholder="<"
                     value={current.min ?? ""}
                     onChange={e => handleNumberChange(field.key, "min", e.target.value === "" ? "" : +e.target.value)}
-                    className="w-1/2 p-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
+                    className={`w-1/2 p-2 rounded-lg border ${
+                      isLight ? "bg-white border-gray-300 text-black" : "bg-gray-800 border-gray-700 text-white"
+                    }`}
                   />
                   <input
                     type="number"
                     placeholder=">"
                     value={current.max ?? ""}
                     onChange={e => handleNumberChange(field.key, "max", e.target.value === "" ? "" : +e.target.value)}
-                    className="w-1/2 p-2 rounded-lg bg-gray-800 border border-gray-700 text-white"
+                    className={`w-1/2 p-2 rounded-lg border ${
+                      isLight ? "bg-white border-gray-300 text-black" : "bg-gray-800 border-gray-700 text-white"
+                    }`}
                   />
                 </div>
               </div>
@@ -169,14 +193,20 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                         key={opt}
                         onClick={() => {
                           if (field.key === "Target #1 Hit") {
-                            onTargetChange(boolVal, target2); 
+                            onTargetChange(boolVal, target2);
                           } else if (field.key === "Target #2 Hit") {
-                            onTargetChange(target1, boolVal); 
+                            onTargetChange(target1, boolVal);
                           } else {
-                            handleBooleanFilter(field.key, boolVal); 
+                            handleBooleanFilter(field.key, boolVal);
                           }
                         }}
-                        className={`px-3 py-1 rounded-full ${isSelected ? "bg-blue-500 text-white" : "bg-gray-800 text-gray-200"}`}
+                        className={`px-3 py-1 rounded-full ${
+                          isSelected
+                            ? "bg-blue-500 text-white"
+                            : isLight
+                            ? "bg-gray-200 text-black"
+                            : "bg-gray-800 text-gray-200"
+                        }`}
                       >
                         {opt}
                       </button>
