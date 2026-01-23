@@ -332,8 +332,7 @@ const FileDataTable: React.FC<Props> = ({
             theme === "dark" ? darkRowBg : lightRowBg;
 
           return (
-            <tr
-                key={idx}
+            <tr key={row._row_hash ?? idx}
                 className="transition-all hover:brightness-110 dark:hover:brightness-125"
                 style={{
                   backgroundColor: updatedRowIds.has(idx)

@@ -41,6 +41,7 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout }) => {
   const [loading, setLoading] = useState<boolean>(false);
 
   const sseRef = useRef<EventSource | null>(null);
+  const dataVersionRef = useRef<number>(0);
   const firstLoadRef = useRef(true);
 
   const fileType = useMemo(() => {
@@ -146,6 +147,7 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout }) => {
         );
         setFullTableData(lookup.rows ?? []);
         setDataVersion(lookup.data_version ?? 0);
+        dataVersionRef.current = lookup.data_version ?? 0;
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -154,28 +156,33 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout }) => {
   useEffect(() => {
     if (!currentFileId) return;
 
-    const sse = new EventSource(`${import.meta.env.VITE_API_URL}/ttscanner/sse/${currentFileId}/`);
+    const sse = new EventSource(
+      `${import.meta.env.VITE_API_URL}/ttscanner/sse/${currentFileId}/`
+    );
     sseRef.current = sse;
 
-    sse.onmessage = event => {
+    sse.onmessage = (event) => {
       try {
         const payload = JSON.parse(event.data);
-        if (payload.data_version > dataVersion) {
-          setFullTableData(payload.rows ?? []);
+
+        if (payload.data_version > dataVersionRef.current) {
+          dataVersionRef.current = payload.data_version ?? 0;
           setDataVersion(payload.data_version ?? 0);
+          setFullTableData(payload.rows ?? []);
         }
       } catch (err) {
         console.error("Failed to parse SSE data:", err);
       }
     };
 
-    sse.onerror = err => {
+    sse.onerror = (err) => {
       console.error("SSE error:", err);
       sse.close();
     };
 
     return () => sse.close();
   }, [currentFileId]);
+
 
   const handleTargetChange = (t1?: boolean, t2?: boolean) => {
     setTarget1(t1);
