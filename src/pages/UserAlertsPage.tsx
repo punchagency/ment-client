@@ -53,20 +53,26 @@ const UserAlertsPage: React.FC = () => {
 
     const fetchInitialData = async () => {
       try {
-        const [alertsData, filesData] = await Promise.all([
-          apiGet<any[]>(`/ttscanner/custom-alert/all/${externalUserId}/`),
-          apiGet<any[]>("/ttscanner/file-associations/"),
-        ]);
+        // Check if files are cached
+        let cachedFiles = sessionStorage.getItem("fileAssociations");
+        let normalizedFiles: FileAssociation[];
 
-        const normalizedFiles: FileAssociation[] = filesData.map((f) => ({
-          id: f.id,
-          algo: f.algo_name,
-          group: f.group_name === "-- No Group --" ? "" : f.group_name,
-          interval: f.interval_name,
-        }));
+        if (cachedFiles) {
+          normalizedFiles = JSON.parse(cachedFiles);
+        } else {
+          const filesData = await apiGet<any[]>("/ttscanner/file-associations/");
+          normalizedFiles = filesData.map(f => ({
+            id: f.id,
+            algo: f.algo_name,
+            group: f.group_name === "-- No Group --" ? "" : f.group_name,
+            interval: f.interval_name,
+          }));
+          sessionStorage.setItem("fileAssociations", JSON.stringify(normalizedFiles));
+        }
+
         setFiles(normalizedFiles);
 
-        // Use Map for faster lookups
+        const alertsData = await apiGet<any[]>(`/ttscanner/custom-alert/all/${externalUserId}/`);
         const fileMap = new Map(normalizedFiles.map(f => [f.id, f]));
 
         const alertsWithNames: UserAlert[] = alertsData.map(alert => {
@@ -85,7 +91,6 @@ const UserAlertsPage: React.FC = () => {
         });
 
         setAlerts(alertsWithNames);
-
       } catch (err) {
         console.error("Initial load failed:", err);
       } finally {
@@ -95,6 +100,7 @@ const UserAlertsPage: React.FC = () => {
 
     fetchInitialData();
   }, [externalUserId]);
+
 
   // Fetch logs only when Logs tab is clicked
   useEffect(() => {
