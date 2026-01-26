@@ -127,39 +127,61 @@ const FileDataTable: React.FC<Props> = ({
 
   const toggleFavorite = async (row: any) => {
     if (!externalUserId) return;
+    
     const symIntKey = Object.keys(row).find(
       (key) => key.toLowerCase().includes("sym") && key.toLowerCase().includes("int")
     );
+    
     if (!symIntKey) {
       setToastMessage({ text: "Cannot favorite: Sym/Int missing", type: "error" });
       return;
     }
+
     const symInt = row[symIntKey];
-    if (!symInt) {
-      setToastMessage({ text: "Cannot favorite: Sym/Int missing", type: "error" });
-      return;
-    }
     const favId = favorites[symInt];
+
+    // --- OPTIMISTIC UPDATE START ---
+    // Capture the old state in case we need to roll back
+    const previousFavorites = { ...favorites };
+
+    setFavorites(prev => {
+      const newFavs = { ...prev };
+      if (!favId) {
+        // Optimistically add a temporary ID (e.g., -1) so the star turns yellow
+        newFavs[symInt] = -1; 
+      } else {
+        // Optimistically remove it
+        delete newFavs[symInt];
+      }
+      return newFavs;
+    });
+    // --- OPTIMISTIC UPDATE END ---
+
     try {
       if (!favId) {
+        // Actual API Call
         const res = await axios.post(
           `${import.meta.env.VITE_API_URL}/ttscanner/fav-row/create/${fileAssociationId}/`,
           { external_user_id: externalUserId, sym_int: symInt }
         );
-        setFavorites(prev => ({ ...prev, [symInt]: res.data.id ?? res.data.favorite_id }));
+        
+        // Update with the REAL ID from the database
+        setFavorites(prev => ({ 
+          ...prev, 
+          [symInt]: res.data.id ?? res.data.favorite_id 
+        }));
         setToastMessage({ text: "Added to favorites!", type: "success" });
       } else {
+        // Actual API Call
         await axios.delete(`${import.meta.env.VITE_API_URL}/ttscanner/fav-row/delete/${favId}/`);
-        setFavorites(prev => {
-          const newFav = { ...prev };
-          delete newFav[symInt];
-          return newFav;
-        });
         setToastMessage({ text: "Removed from favorites!", type: "error" });
+        // No need to update state here, we already removed it optimistically
       }
     } catch (err) {
       console.error("Favorite action failed:", err);
-      setToastMessage({ text: "Action failed!", type: "error" });
+      // ROLLBACK: If the server fails, revert to the previous state
+      setFavorites(previousFavorites);
+      setToastMessage({ text: "Server error: Action failed!", type: "error" });
     }
   };
 
@@ -332,7 +354,8 @@ const FileDataTable: React.FC<Props> = ({
             theme === "dark" ? darkRowBg : lightRowBg;
 
           return (
-            <tr key={row._row_hash ?? idx}
+            <tr
+                key={idx}
                 className="transition-all hover:brightness-110 dark:hover:brightness-125"
                 style={{
                   backgroundColor: updatedRowIds.has(idx)

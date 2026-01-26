@@ -16,9 +16,7 @@ interface Props {
   alert: UserAlert;
   files: FileAssociation[];
   onClose: () => void;
-  onSave: (
-    alert: UserAlert
-  ) => Promise<Record<string, string[]> | null>;
+  onSave: (alert: UserAlert) => Promise<Record<string, any> | null>;
 }
 
 const CONDITION_OPTIONS = [
@@ -35,14 +33,10 @@ const EditUserAlertModal: React.FC<Props> = ({ alert, files, onClose, onSave }) 
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [csvSymInt, setCsvSymInt] = useState<string[]>([]);
   const [dropdownLoading, setDropdownLoading] = useState(false);
-  const [modalErrors, setModalErrors] = useState<Record<string, string[]> | null>(null);
-  const [currentFile, setCurrentFile] = useState<FileAssociation | null>(
-    files.find(f => f.id === alert.file_association_id) || null
-  );
+  const [modalErrors, setModalErrors] = useState<Record<string, any> | null>(null);
   
-  // Use the imported modal themes
+  const currentFile = files.find(f => f.id === alert.file_association_id) || null;
   const currentStyle: ModalTheme = theme === "dark" ? darkModalTheme : lightModalTheme;
-
   const scrollRef = useRef<HTMLDivElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
 
@@ -52,10 +46,8 @@ const EditUserAlertModal: React.FC<Props> = ({ alert, files, onClose, onSave }) 
 
   useEffect(() => {
     if (modalErrors && errorRef.current && scrollRef.current) {
-      const scrollContainer = scrollRef.current;
-      const errorElement = errorRef.current;
-      scrollContainer.scrollTo({
-        top: errorElement.offsetTop - 10,
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
         behavior: "smooth"
       });
     }
@@ -70,264 +62,158 @@ const EditUserAlertModal: React.FC<Props> = ({ alert, files, onClose, onSave }) 
       ]);
       setCsvHeaders(headers || []);
       setCsvSymInt(symInt || []);
-
-      setUpdatedAlert(prev => {
-        const updatedSymbolInterval = prev.symbol_interval || symInt?.[0] || "";
-        const updatedFieldName = prev.field_name || headers?.[0] || "";
-
-        return {
-          ...prev,
-          symbol_interval: updatedSymbolInterval,
-          field_name: updatedFieldName
-        };
-      });
     } catch (err) {
-      console.error("Error fetching dropdown data:", err);
       setModalErrors(normalizeErrors(err));
     } finally {
       setDropdownLoading(false);
     }
   };
 
-  const handleFileChange = (fileId: number) => {
-    const selectedFile = files.find(f => f.id === fileId) || null;
-    setCurrentFile(selectedFile);
-    setUpdatedAlert(prev => ({ ...prev, file_association_id: fileId }));
-    setCsvHeaders([]);
-    setCsvSymInt([]);
-  };
-
   const isNumericField = (fieldName: string): boolean => {
     if (!fieldName) return false;
-    const numericKeywords = ['price','volume','amount','value','pct','percent','rate','change','high','low','open','close'];
+    const numericKeywords = ['price', 'volume', 'amount', 'value', 'pct', 'percent', 'rate', 'change', 'high', 'low', 'open', 'close', 'bars', 'entry'];
     return numericKeywords.some(k => fieldName.toLowerCase().includes(k));
   };
 
   const handleSave = async () => {
-    if (!updatedAlert.symbol_interval || !updatedAlert.field_name) {
-      setModalErrors({ general: ["Symbol/Interval and Field Name are required"] });
-      return;
-    }
-
-    const errors = await onSave(updatedAlert); 
-    if (errors) {
-      setModalErrors(errors); 
-    } else {
-      onClose(); 
+    setModalErrors(null);
+    try {
+      const errors = await onSave(updatedAlert);
+      if (errors) {
+        setModalErrors(errors);
+      } else {
+        onClose();
+      }
+    } catch (err) {
+      setModalErrors(normalizeErrors(err));
     }
   };
 
-  return (
-    <div 
-      className="fixed inset-0 flex items-center justify-center px-4 z-50 animate-fadeIn"
-      style={{ backgroundColor: theme === "light" ? "rgba(0, 0, 0, 0.3)" : "rgba(0, 0, 0, 0.5)" }}
-    >
-      <div 
-        className="rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-scaleIn"
-        style={{ 
-          backgroundColor: currentStyle.background,
-          color: currentStyle.text,
-        }}
-      >
+  // Helper to check if condition is "Any Change"
+  const isChangeCondition = updatedAlert.condition_type === "change";
 
-        {/* Header */}
-        <div 
-          className="flex justify-between items-center px-6 py-4"
-          style={{ 
-            backgroundColor: currentStyle.headerBg,
-            color: currentStyle.headerText,
-            borderBottom: `1px solid ${currentStyle.border}`
-          }}
-        >
+  // Handle condition change and clear compare_value if "change" is selected
+  const handleConditionChange = (val: string) => {
+    setUpdatedAlert(prev => ({
+      ...prev,
+      condition_type: val,
+      // CRITICAL: If 'change', wipe the value so it doesn't send old data to backend
+      compare_value: val === "change" ? "" : prev.compare_value
+    }));
+  };
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center px-4 z-50" style={{ backgroundColor: "rgba(0,0,0,0.4)" }}>
+      <div className="rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden" style={{ backgroundColor: currentStyle.background, color: currentStyle.text }}>
+        
+        <div className="flex justify-between items-center px-6 py-4" style={{ backgroundColor: currentStyle.headerBg, color: currentStyle.headerText, borderBottom: `1px solid ${currentStyle.border}` }}>
           <h2 className="text-xl font-bold">Edit Alert</h2>
-          <button
-            onClick={onClose}
-            className="hover:opacity-70 text-2xl transition-opacity"
-            style={{ color: currentStyle.headerText }}
-          >
-            ✕
-          </button>
+          <button onClick={onClose} className="hover:opacity-70 text-2xl">✕</button>
         </div>
 
-        {/* Scrollable Content */}
-        <div ref={scrollRef} className="overflow-y-auto px-6 py-4 flex-1 space-y-4 max-h-[calc(90vh-120px)]">
-
-          <p style={{ color: currentStyle.textSecondary }}>ID: {alert.id}</p>
-
-          {/* File Association */}
+        <div ref={scrollRef} className="overflow-y-auto px-6 py-4 flex-1 space-y-4">
+          
           <div>
-            <label className="text-sm mb-1 block" style={{ color: currentStyle.textSecondary }}>
-              File Association
-            </label>
-            <select
-              value={updatedAlert.file_association_id}
-              onChange={e => handleFileChange(parseInt(e.target.value))}
-              className="px-3 py-2 rounded border w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50"
-              style={{
-                backgroundColor: currentStyle.inputBg,
-                borderColor: currentStyle.inputBorder,
-                color: currentStyle.inputText,
-              }}
+            <label className="text-sm mb-1 block opacity-70">File Association (Fixed)</label>
+            <div 
+              className="px-3 py-2 rounded border w-full font-medium" 
+              style={{ backgroundColor: currentStyle.inputBg, borderColor: currentStyle.border, opacity: 0.8, cursor: 'not-allowed' }}
             >
-              <option value="" disabled>Select File Association</option>
-              {files.map(f => (
-                <option key={f.id} value={f.id}>
-                  {f.algo} {f.group ? `- ${f.group}` : ""} ({f.interval})
-                </option>
-              ))}
-            </select>
+              {currentFile ? `${currentFile.algo} ${currentFile.group ? `- ${currentFile.group}` : ""} (${currentFile.interval})` : "N/A"}
+            </div>
           </div>
 
-          {/* Symbol/Interval */}
-          {!dropdownLoading && (
-            <div>
-              <label className="text-sm mb-1 block" style={{ color: currentStyle.textSecondary }}>
-                Symbol/Interval
-              </label>
-              <select
-                value={updatedAlert.symbol_interval}
-                onChange={e => setUpdatedAlert({ ...updatedAlert, symbol_interval: e.target.value })}
-                className="px-3 py-2 rounded border w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50"
-                style={{
-                  backgroundColor: currentStyle.inputBg,
-                  borderColor: currentStyle.inputBorder,
-                  color: currentStyle.inputText,
-                }}
-                disabled={csvSymInt.length === 0}
-              >
-                <option value="">Select Sym/Int</option>
-                {csvSymInt.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
+          {!dropdownLoading ? (
+            <>
+              <div>
+                <label className="text-sm mb-1 block opacity-70">Symbol/Interval</label>
+                <select 
+                  value={updatedAlert.symbol_interval} 
+                  onChange={e => setUpdatedAlert({ ...updatedAlert, symbol_interval: e.target.value })} 
+                  className="px-3 py-2 rounded border w-full focus:ring-2 focus:ring-blue-500 outline-none" 
+                  style={{ backgroundColor: currentStyle.inputBg, borderColor: currentStyle.inputBorder, color: currentStyle.inputText }}
+                >
+                  {csvSymInt.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm mb-1 block opacity-70">Field Name</label>
+                <select 
+                  value={updatedAlert.field_name} 
+                  onChange={e => setUpdatedAlert({ ...updatedAlert, field_name: e.target.value })} 
+                  className="px-3 py-2 rounded border w-full focus:ring-2 focus:ring-blue-500 outline-none" 
+                  style={{ backgroundColor: currentStyle.inputBg, borderColor: currentStyle.inputBorder, color: currentStyle.inputText }}
+                >
+                  {csvHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-4 text-sm opacity-70">Loading options...</div>
           )}
 
-          {/* Field Name */}
-          {!dropdownLoading && (
-            <div>
-              <label className="text-sm mb-1 block" style={{ color: currentStyle.textSecondary }}>
-                Field Name
-              </label>
-              <select
-                value={updatedAlert.field_name}
-                onChange={e => setUpdatedAlert({ ...updatedAlert, field_name: e.target.value })}
-                className="px-3 py-2 rounded border w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition disabled:opacity-50"
-                style={{
-                  backgroundColor: currentStyle.inputBg,
-                  borderColor: currentStyle.inputBorder,
-                  color: currentStyle.inputText,
-                }}
-                disabled={csvHeaders.length === 0}
-              >
-                <option value="">Select Field</option>
-                {csvHeaders.map(h => <option key={h} value={h}>{h}</option>)}
-              </select>
-            </div>
-          )}
-
-          {/* Condition */}
           <div>
-            <label className="text-sm mb-1 block" style={{ color: currentStyle.textSecondary }}>
-              Condition
-            </label>
-            <select
-              value={updatedAlert.condition_type}
-              onChange={e => setUpdatedAlert({ ...updatedAlert, condition_type: e.target.value })}
-              className="px-3 py-2 rounded border w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-              style={{
-                backgroundColor: currentStyle.inputBg,
-                borderColor: currentStyle.inputBorder,
-                color: currentStyle.inputText,
-              }}
+            <label className="text-sm mb-1 block opacity-70">Condition</label>
+            <select 
+              value={updatedAlert.condition_type} 
+              onChange={e => handleConditionChange(e.target.value)} 
+              className="px-3 py-2 rounded border w-full focus:ring-2 focus:ring-blue-500 outline-none" 
+              style={{ backgroundColor: currentStyle.inputBg, borderColor: currentStyle.inputBorder, color: currentStyle.inputText }}
             >
               {CONDITION_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>
           </div>
 
-          {/* Compare Value */}
           <div>
-            <label className="text-sm mb-1 block" style={{ color: currentStyle.textSecondary }}>
-              Compare Value
+            <label className="text-sm mb-1 block opacity-70">
+              Compare Value {isChangeCondition}
             </label>
             <input
               type={isNumericField(updatedAlert.field_name) ? "number" : "text"}
-              value={updatedAlert.condition_type === "change" ? "" : updatedAlert.compare_value}
-              onChange={e => {
-                if (isNumericField(updatedAlert.field_name)) {
-                  const value = e.target.value;
-                  if (value === '' || /^-?\d*\.?\d*$/.test(value)) setUpdatedAlert({ ...updatedAlert, compare_value: value });
-                } else {
-                  setUpdatedAlert({ ...updatedAlert, compare_value: e.target.value });
-                }
-              }}
-              placeholder={updatedAlert.condition_type === "change"
-                ? "Not required for 'Any Change'"
-                : isNumericField(updatedAlert.field_name) ? "Enter a number" : "Enter text"
-              }
-              disabled={updatedAlert.condition_type === "change"}
-              className={`px-3 py-2 rounded border w-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
-                updatedAlert.condition_type === "change" ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-              style={{
-                backgroundColor: currentStyle.inputBg,
-                borderColor: currentStyle.inputBorder,
+              value={updatedAlert.compare_value || ""}
+              onChange={e => setUpdatedAlert({ ...updatedAlert, compare_value: e.target.value })}
+              disabled={isChangeCondition}
+              placeholder={isChangeCondition ? "Value cleared" : "Enter value..."}
+              className="px-3 py-2 rounded border w-full focus:ring-2 focus:ring-blue-500 outline-none"
+              style={{ 
+                backgroundColor: currentStyle.inputBg, 
+                borderColor: (modalErrors?.compare_value || (modalErrors?.errors && modalErrors.errors.compare_value)) ? "#ef4444" : currentStyle.inputBorder, 
                 color: currentStyle.inputText,
+                opacity: isChangeCondition ? 0.5 : 1,
+                cursor: isChangeCondition ? 'not-allowed' : 'text'
               }}
             />
           </div>
 
-          {/* Error Messages */}
           {modalErrors && (
-            <div 
-              ref={errorRef} 
-              className="mb-4 rounded-lg p-3 border overflow-auto max-h-32 animate-slideDown"
-              style={{
-                backgroundColor: currentStyle.errorBg,
-                borderColor: currentStyle.errorBorder,
-                color: currentStyle.errorText,
-              }}
-            >
-              <div className="flex items-center mb-2">
-                <span className="mr-2">⚠️</span>
-                <strong>Error:</strong>
-              </div>
+            <div ref={errorRef} className="mt-2 rounded-lg p-3 border" style={{ backgroundColor: currentStyle.errorBg, borderColor: currentStyle.errorBorder, color: currentStyle.errorText }}>
               <ul className="list-inside list-disc space-y-1 text-sm">
-                {Object.entries(modalErrors).map(([key, vals]) => (
-                  <li key={key}><span className="font-medium">{key}:</span> {vals.join(", ")}</li>
-                ))}
+                {Object.entries(modalErrors).map(([key, value]) => {
+                  if (key === 'detail') return null;
+                  if (key === 'errors' && typeof value === 'object') {
+                    return Object.entries(value).map(([field, messages]) => (
+                      <li key={field}>
+                        <span className="font-medium capitalize">{field.replace('_', ' ')}:</span>{" "}
+                        {Array.isArray(messages) ? messages.join(", ") : String(messages)}
+                      </li>
+                    ));
+                  }
+                  return (
+                    <li key={key}>
+                      <span className="font-medium capitalize">{key.replace('_', ' ')}:</span>{" "}
+                      {Array.isArray(value) ? value.join(", ") : String(value)}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
-
         </div>
 
-        {/* Footer Buttons */}
-        <div 
-          className="flex justify-end space-x-2 px-6 py-4"
-          style={{ borderTop: `1px solid ${currentStyle.border}` }}
-        >
-          <button 
-            onClick={onClose}
-            className="px-4 py-2 rounded transition hover:opacity-90"
-            style={{
-              backgroundColor: currentStyle.buttonSecondaryBg,
-              color: currentStyle.buttonSecondaryText,
-            }}
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={handleSave} 
-            disabled={dropdownLoading}
-            className="px-4 py-2 rounded transition hover:opacity-90 disabled:opacity-50"
-            style={{
-              backgroundColor: currentStyle.buttonPrimaryBg,
-              color: "#ffffff",
-            }}
-          >
-            Save
-          </button>
+        <div className="flex justify-end space-x-2 px-6 py-4" style={{ borderTop: `1px solid ${currentStyle.border}` }}>
+          <button onClick={onClose} className="px-4 py-2 rounded transition hover:bg-gray-100 dark:hover:bg-gray-800" style={{ color: currentStyle.text }}>Cancel</button>
+          <button onClick={handleSave} disabled={dropdownLoading} className="px-4 py-2 rounded transition hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: currentStyle.buttonPrimaryBg, color: "#ffffff" }}>Save</button>
         </div>
-
       </div>
     </div>
   );

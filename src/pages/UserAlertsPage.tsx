@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { getUserID } from "../services/auth";
 import { apiGet, apiPatch, apiDelete } from "../services/api";
 import TopBar from "../components/TopBar";
+import Toast from "../components/Toast";
 import UserAlertTable from "../components/UserAlertTable";
 import EditUserAlertModal from "../components/EditUserAlertModal";
 import { useTheme } from "../context/ThemeContext";
@@ -25,6 +26,7 @@ interface TriggeredAlert {
 }
 
 const UserAlertsPage: React.FC = () => {
+  const [toastQueue, setToastQueue] = useState<{ message: string; type: "success" | "error"; }[]>([]);
   const [activeTab, setActiveTab] = useState<"active" | "logs">("active");
   const [alerts, setAlerts] = useState<UserAlert[]>([]);
   const [triggeredLogs, setTriggeredLogs] = useState<TriggeredAlert[]>([]);
@@ -37,9 +39,6 @@ const UserAlertsPage: React.FC = () => {
 
   const { theme } = useTheme();
   const currentTheme: TableTheme = theme === "dark" ? darkTheme : lightTheme;
-
-  const sseQueue = useRef<TriggeredAlert[]>([]);
-  const sseTimeout = useRef<any>(null);
 
   // Fetch user ID
   useEffect(() => {
@@ -131,7 +130,7 @@ const UserAlertsPage: React.FC = () => {
     fetchLogs();
   }, [activeTab, externalUserId, files]);
 
-  // // SSE for live alerts with debouncing
+  // SSE for live alerts with debouncing
   useEffect(() => {
     if (!externalUserId) return;
 
@@ -139,45 +138,48 @@ const UserAlertsPage: React.FC = () => {
     const eventSource = new EventSource(sseUrl);
 
     eventSource.onmessage = (event) => {
-      const snapshot = JSON.parse(event.data);
-      if (!Array.isArray(snapshot)) return;
+      const data = JSON.parse(event.data);
 
-      // Update active alerts based on snapshot
-      setAlerts(prevAlerts => {
-        return prevAlerts.map(alert => {
-          const updated = snapshot.find(a => a.alert_id === alert.id);
+      // trigger event
+      if (data?.message && data?.triggered_at) {
+        setToastQueue(prev => [...prev, { message: data.message, type: data.alert_type === "system" ? "error" : "success" }]);
+        setTriggeredLogs(prev => [
+          {
+            id: data.id,
+            file_name: data.file_name ?? "Live Alert",
+            message: data.message,
+            triggered_at: data.triggered_at,
+            alert_type:
+              data.alert_type === "system"
+                ? "System"
+                : data.alert_type === "global"
+                ? "Default"
+                : "User",
+          },
+          ...prev,
+        ]);
+
+        return;
+      }
+
+      // snapshot update
+      if (!Array.isArray(data)) return;
+
+      setAlerts(prevAlerts =>
+        prevAlerts.map(alert => {
+          const updated = data.find(a => a.alert_id === alert.id);
           return updated
             ? { ...alert, last_value: updated.last_value, is_active: updated.is_active }
             : alert;
-        });
-      });
-
-      // Queue triggered logs (optional)
-      snapshot.forEach(a => {
-        if (!a.is_active) {
-          const fileName = alerts.find(alert => alert.id === a.alert_id)?.file_name || "Unknown";
-          sseQueue.current.push({
-            id: a.alert_id,
-            file_name: fileName,
-            message: `Alert triggered: ${a.last_value}`,
-            triggered_at: new Date().toISOString(),
-            alert_type: "User",
-          });
-        }
-      });
-
-      if (!sseTimeout.current && sseQueue.current.length > 0) {
-        sseTimeout.current = setTimeout(() => {
-          setTriggeredLogs(prev => [...sseQueue.current, ...prev]);
-          sseQueue.current = [];
-          sseTimeout.current = null;
-        }, 1000); // batch updates every 1 second
-      }
+        })
+      );
     };
 
     eventSource.onerror = () => eventSource.close();
+
     return () => eventSource.close();
-  }, [externalUserId, alerts]);
+  }, [externalUserId]); 
+
 
 
   // Save alert
@@ -382,6 +384,13 @@ const UserAlertsPage: React.FC = () => {
           </div>
         )}
       </div>
+      {toastQueue.length > 0 && (
+        <Toast
+          message={toastQueue[0].message}
+          type={toastQueue[0].type}
+          onClose={() => setToastQueue(prev => prev.slice(1))}
+        />
+      )}
     </>
   );
 };
