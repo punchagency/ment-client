@@ -29,7 +29,7 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout }) => {
   const [selectedInterval, setSelectedInterval] = useState<Option | null>(null);
 
   const [fullTableData, setFullTableData] = useState<any[]>([]);
-  const [dataVersion, setDataVersion] = useState<number>(0);
+  const [_dataVersion, setDataVersion] = useState<number>(0);
   const [currentFileId, setCurrentFileId] = useState<number | null>(null);
   const [currentFileName, setCurrentFileName] = useState<string | null>(null);
 
@@ -151,6 +151,7 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout }) => {
       .finally(() => setLoading(false));
   }, [selectedAlgo, selectedGroup, selectedInterval]);
 
+  // --- SSE Real-time Updates ---
   useEffect(() => {
     if (!currentFileId) return;
 
@@ -160,10 +161,15 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout }) => {
     sse.onmessage = event => {
       try {
         const payload = JSON.parse(event.data);
-        if (payload.data_version > dataVersion) {
-          setFullTableData(payload.rows ?? []);
-          setDataVersion(payload.data_version ?? 0);
-        }
+        
+        // Use functional update to avoid stale closure issues with dataVersion
+        setDataVersion(prevVersion => {
+          if (payload.data_version > prevVersion) {
+            setFullTableData(payload.rows ?? []);
+            return payload.data_version;
+          }
+          return prevVersion;
+        });
       } catch (err) {
         console.error("Failed to parse SSE data:", err);
       }
