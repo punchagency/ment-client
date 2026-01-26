@@ -29,7 +29,7 @@ const UserScannerPage: React.FC<UserScannerPageProps> = ({ onLogout }) => {
   const [selectedInterval, setSelectedInterval] = useState<Option | null>(null);
 
   const [fullTableData, setFullTableData] = useState<any[]>([]);
-  const [dataVersion, setDataVersion] = useState<number>(0);
+  const [_dataVersion, setDataVersion] = useState<number>(0);
   const [currentFileId, setCurrentFileId] = useState<number | null>(null);
   const [currentFileName, setCurrentFileName] = useState<string | null>(null);
 
